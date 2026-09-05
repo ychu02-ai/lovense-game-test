@@ -95,6 +95,15 @@
     font-weight:700; padding:1px 6px; border-radius:5px; margin-left:6px; vertical-align:2px;
   }
   .dev button{ margin-top:7px; font-size:11.5px; padding:6px 10px; font-weight:500; }
+  /* gatt explorer */
+  .svc{ background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 11px; margin-bottom:8px; }
+  .svc.primarySvc{ border-color:var(--accent); }
+  .svcName{ font-family:ui-monospace,monospace; font-size:11.5px; font-weight:700; color:var(--text); word-break:break-all; }
+  .svcTag{ display:inline-block; background:var(--accent2); color:#fff; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:4px; margin-left:6px; vertical-align:2px; }
+  .chr{ border-top:1px solid var(--border); margin-top:8px; padding-top:8px; }
+  .chrUuid{ font-family:ui-monospace,monospace; font-size:11.5px; color:#c9c9dd; word-break:break-all; }
+  .props{ font-size:10.5px; color:var(--muted); margin-top:2px; letter-spacing:.3px; }
+  .val{ font-family:ui-monospace,monospace; font-size:11px; color:#ffd48f; margin-top:5px; word-break:break-all; min-height:0; }
   .rssi{ float:right; font-family:ui-monospace,monospace; color:var(--muted); font-size:11.5px; }
 </style>
 </head>
@@ -166,9 +175,13 @@
       <label for="autoReconnect">Auto-reconnect if the link drops</label>
     </div>
 
+    <div class="check">
+      <input type="checkbox" id="wideUuid">
+      <label for="wideUuid">Wide UUID sweep — request every <code>&lt;A-Z&gt;&lt;A-Z&gt;0001</code> Lovense service (slower picker, only if the toy is not recognised)</label>
+    </div>
     <div class="mt">
       <label>Extra service UUID (only if auto-discovery finds nothing)</label>
-      <input type="text" id="extraUuid" placeholder="e.g. 45300001-0023-4bd4-bbd5-a6920e4c5653">
+      <input type="text" id="extraUuid" placeholder="45440001-0023-4bd4-bbd5-a6920e4c5653, comma-separated for several">
     </div>
 
     <div class="divider"></div>
@@ -205,9 +218,30 @@
     </details>
   </section>
 
-  <!-- ========== 3. TOY / PROTOCOL ========== -->
+  <!-- ========== 3. GATT EXPLORER ========== -->
   <section>
-    <h2>3 · Toy &amp; protocol</h2>
+    <h2>3 · GATT explorer</h2>
+    <div class="statusBox" id="expStatus">Connect first — every service and characteristic the browser can reach will be listed here, nRF-Connect style.</div>
+    <div class="chipRow">
+      <button id="expRefresh" disabled>Re-scan services</button>
+      <button id="expReadAll" disabled>Read every readable char</button>
+    </div>
+    <div id="explorer"></div>
+    <details>
+      <summary>Why this can show fewer services than nRF Connect</summary>
+      <div class="body">
+        Web Bluetooth only reveals services the page declared <i>before</i> connecting, so an unknown toy may hide
+        services nRF can see. If a service is missing: read its UUID in nRF Connect, paste it into
+        <b>Extra service UUID</b> in section 2 (comma-separate several), reconnect, and it will appear here.
+        Once you find the right pair, press <b>Set as TX</b> on the writable characteristic and <b>Set as RX</b> on
+        the notifying one — the console and the game below will then drive that toy, whatever brand it is.
+      </div>
+    </details>
+  </section>
+
+  <!-- ========== 4. TOY / PROTOCOL ========== -->
+  <section>
+    <h2>4 · Toy &amp; protocol</h2>
     <div class="row">
       <div>
         <label>Command set <span id="autoTag" style="color:var(--ok);"></span></label>
@@ -240,15 +274,21 @@
     <div class="mt">
       <label>Raw command console (sent verbatim; <code>;</code> added if missing)</label>
       <div class="row">
-        <div style="flex:3 1 180px;"><input type="text" id="rawCmd" placeholder="Vibrate:10;"></div>
-        <div style="flex:0 0 84px;"><button id="rawSend" class="primary full" disabled>Send</button></div>
+        <div style="flex:3 1 150px;"><input type="text" id="rawCmd" placeholder="Vibrate:10;"></div>
+        <div style="flex:0 0 92px;">
+          <select id="rawFmt">
+            <option value="text">Text</option>
+            <option value="hex">Hex</option>
+          </select>
+        </div>
+        <div style="flex:0 0 78px;"><button id="rawSend" class="primary full" disabled>Send</button></div>
       </div>
     </div>
   </section>
 
   <!-- ========== 4. GAME ========== -->
   <section>
-    <h2>4 · Game</h2>
+    <h2>5 · Game</h2>
     <div class="stats">
       <div class="stat"><div class="label">Level</div><div class="value" id="levelDisplay">—</div></div>
       <div class="stat"><div class="label">Base strength</div><div class="value" id="strengthDisplay">—</div></div>
@@ -269,7 +309,7 @@
 
   <!-- ========== 5. LOG ========== -->
   <section>
-    <h2>5 · BLE log</h2>
+    <h2>6 · BLE log</h2>
     <div id="log"></div>
     <div class="chipRow mt">
       <button id="clearLog">Clear</button>
@@ -304,28 +344,6 @@
 
   var LOVENSE_COMPANY_ID = 620;
 
-  function lovenseServiceList(){
-    var list = [];
-    // gen3: one byte per uppercase-ASCII model letter (0x40–0x5f), suffix group 0023/0024/0025
-    var groups = ['0023','0024','0025'];
-    for (var b = 0x40; b <= 0x5f; b++){
-      var hx = b.toString(16);
-      if (hx.length < 2) hx = '0' + hx;
-      for (var g = 0; g < groups.length; g++){
-        list.push(hx + '300001-' + groups[g] + '-4bd4-bbd5-a6920e4c5653');
-      }
-    }
-    list.push('0000fff0-0000-1000-8000-00805f9b34fb');  // gen1
-    list.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');  // gen2 (Nordic UART)
-    list.push('0000ffe0-0000-1000-8000-00805f9b34fb');
-    list.push('0000180a-0000-1000-8000-00805f9b34fb');  // Device Information
-    list.push('0000180f-0000-1000-8000-00805f9b34fb');  // Battery
-    return list;
-  }
-
-  var NAME_PREFIXES = ['LVS','LOVE','Lovense','Gush','Edge','Solace','Hush','Lush','Domi','Nora',
-                       'Max','Ferri','Ambi','Osci','Diamo','Calor','Gemini','Hyphy','Gravity','Lapis','Ridge','Flexer','Vulse'];
-
   // DeviceType reply is "<code>:<fw>:<mac>;" — the code identifies the model.
   var TYPE_MAP = {
     'A':['Nora','rotate'], 'C':['Nora','rotate'],
@@ -340,9 +358,49 @@
     'H':['Solace','thrust'], 'BA':['Solace Pro','thrust']
   };
 
+  /* A Lovense gen3 service UUID encodes the model code in its first TWO bytes,
+     each byte the ASCII of one character, the code right-padded with "0":
+         Edge   code "P"  -> "P0" -> 0x50 0x30 -> 50300001-0023-...
+         Hush   code "Z"  -> "Z0" -> 0x5a 0x30 -> 5a300001-0023-...
+         Gush   code "ED" -> "ED" -> 0x45 0x44 -> 45440001-0023-...   <- confirmed on hardware
+     Fourth group is 0023 / 0024 / 0025 depending on the model.
+     tx = ...0002-, rx = ...0003- inside the same family.               */
+  var UUID_GROUPS = ['0023','0024','0025'];
+  function codeToServiceUuids(code){
+    var c = (String(code).toUpperCase() + '0').slice(0, 2);
+    var hx = c.charCodeAt(0).toString(16) + c.charCodeAt(1).toString(16);
+    return UUID_GROUPS.map(function(g){ return hx + '0001-' + g + '-4bd4-bbd5-a6920e4c5653'; });
+  }
+
+  function lovenseServiceList(){
+    var list = [], i, c;
+    // every single-letter code  A0 .. Z0
+    for (i = 0x41; i <= 0x5a; i++) list = list.concat(codeToServiceUuids(String.fromCharCode(i)));
+    // every known two-letter code (EA Gravity, ED Gush, PB Edge 2, BA Solace Pro, ...)
+    for (c in TYPE_MAP) if (TYPE_MAP.hasOwnProperty(c)) list = list.concat(codeToServiceUuids(c));
+    // optional exhaustive sweep: <A-Z><A-Z>
+    if (wideUuidEl && wideUuidEl.checked){
+      for (i = 0x41; i <= 0x5a; i++)
+        for (var j = 0x41; j <= 0x5a; j++)
+          list = list.concat(codeToServiceUuids(String.fromCharCode(i) + String.fromCharCode(j)));
+    }
+    list.push('0000fff0-0000-1000-8000-00805f9b34fb');  // gen1
+    list.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');  // gen2 (Nordic UART)
+    list.push('0000ffe0-0000-1000-8000-00805f9b34fb');
+    list.push('0000180a-0000-1000-8000-00805f9b34fb');
+    list.push('0000180f-0000-1000-8000-00805f9b34fb');
+    var seen = {}, out = [];
+    list.forEach(function(u){ if (!seen[u]){ seen[u] = 1; out.push(u); } });
+    return out;
+  }
+
+  var NAME_PREFIXES = ['LVS','LOVE','Lovense','Gush','Edge','Solace','Hush','Lush','Domi','Nora',
+                       'Max','Ferri','Ambi','Osci','Diamo','Calor','Gemini','Hyphy','Gravity','Lapis','Ridge','Flexer','Vulse'];
+
   /* ============================================================
      State
      ============================================================ */
+  var wideUuidEl = null;
   var device=null, server=null, service=null, txChar=null, rxChar=null;
   var connected=false, connecting=false;
   var lastSentCmd='', lastSentAt=0;
@@ -355,6 +413,7 @@
   var wakeLock=null;
 
   var scanObj=null, scanSeen={}, scanRenderTimer=null;
+  var discoveredServices=[], readableChars=[];
 
   /* ============================================================
      Game tuning (ported from lovense_game.html)
@@ -382,12 +441,13 @@
       scanLovenseOnly=$('scanLovenseOnly'), scanList=$('scanList');
   var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn'), retryBtn=$('retryBtn'), advBtn=$('advBtn'), attemptsEl=$('attempts');
   var filterModeEl=$('filterMode'), exactWrap=$('exactWrap'), exactNameEl=$('exactName');
-  var autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid');
+  var autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid'), wideUuidEl=$('wideUuid');
   var iName=$('iName'), iService=$('iService'), iTx=$('iTx'), iRx=$('iRx'), iType=$('iType'), iBatt=$('iBatt');
   var modelEl=$('model'), autoTag=$('autoTag'), customWrap=$('customWrap'), customPrefixEl=$('customPrefix');
   var manualEl=$('manual'), manualVal=$('manualVal'), manualLv=$('manualLv'), mStop=$('mStop');
   var qType=$('qType'), qBatt=$('qBatt'), qStatus=$('qStatus'), qPower=$('qPower');
-  var rawCmd=$('rawCmd'), rawSend=$('rawSend');
+  var rawCmd=$('rawCmd'), rawSend=$('rawSend'), rawFmt=$('rawFmt');
+  var expStatus=$('expStatus'), explorerBox=$('explorer'), expRefresh=$('expRefresh'), expReadAll=$('expReadAll');
   var levelDisplay=$('levelDisplay'), strengthDisplay=$('strengthDisplay'),
       patternDisplay=$('patternDisplay'), timeDisplay=$('timeDisplay'), strengthBar=$('strengthBar');
   var startBtn=$('startBtn'), stopBtn=$('stopBtn'), burstBtn=$('burstBtn');
@@ -586,8 +646,7 @@
 
   function collectOptionalServices(){
     var list = lovenseServiceList();
-    var extra = extraUuidEl.value.trim().toLowerCase();
-    if (extra) list.unshift(extra);
+    extraUuids().forEach(function(u){ list.unshift(u); });
     return list;
   }
 
@@ -609,20 +668,17 @@
      → 45300001-002{3,4,5}-4bd4-bbd5-a6920e4c5653
      Same rule that makes Edge (code P = 0x50) use 50300001-…            */
   function deriveCandidates(name){
-    var out = [], groups = ['0023','0024','0025'], i, g, hx;
+    var out = [];
     var m = /^(?:LVS|LOVE)[-_]?([A-Za-z]{1,3})/i.exec(name || '');
     if (m){
       var code = m[1].toUpperCase();
-      for (i = 0; i < code.length; i++){
-        hx = code.charCodeAt(i).toString(16);
-        for (g = 0; g < groups.length; g++) out.push(hx + '300001-' + groups[g] + '-4bd4-bbd5-a6920e4c5653');
-      }
-      log('Name "' + name + '" → model code "' + code + '" → first guess ' + out[0], 'hi');
+      out = out.concat(codeToServiceUuids(code));                 // "ED" -> 4544...
+      if (code.length > 1) out = out.concat(codeToServiceUuids(code.charAt(0)));  // fallback "E0"
+      log('Name "' + name + '" -> model code "' + code + '" -> first guess ' + out[0], 'hi');
     }
     out.push('0000fff0-0000-1000-8000-00805f9b34fb');
     out.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
-    var extra = extraUuidEl.value.trim().toLowerCase();
-    if (extra) out.unshift(extra);
+    extraUuids().forEach(function(u){ out.unshift(u); });
     return out;
   }
 
@@ -749,6 +805,7 @@
       })
       .then(function(services){
         if (!services.length) throw new Error('NO_SERVICES_AT_ALL');
+        discoveredServices = services;
         failStep = 'characteristics';
         return pickServiceAndChars(services);
       })
@@ -767,6 +824,7 @@
         setConn('Connected to ' + (device.name || 'device') + '.', 'ok');
         setControlsEnabled(true);
         requestWakeLock();
+        renderExplorer();
         return delay(350)
           .then(function(){ return send('DeviceType;', {force:true}); })
           .then(function(){ return delay(300); })
@@ -792,6 +850,7 @@
       })
       .then(function(services){
         if (!services.length) throw new Error('NO_SERVICES_AT_ALL');
+        discoveredServices = services;
         return pickServiceAndChars(services);
       })
       .then(function(ok){
@@ -803,7 +862,7 @@
       .then(function(){
         connected = true; connecting = false;
         setConn('Connected to ' + (device.name || 'device') + '.', 'ok');
-        setControlsEnabled(true); requestWakeLock();
+        setControlsEnabled(true); requestWakeLock(); renderExplorer();
         return delay(350).then(function(){ return send('DeviceType;', {force:true}); });
       })
       .catch(function(err){ connecting = false; retryBtn.disabled = false; handleConnectError(err); });
@@ -949,6 +1008,187 @@
   });
 
   /* ============================================================
+     GATT explorer — an nRF-Connect-style view of everything the
+     browser can reach, plus manual TX/RX assignment so the console
+     and the game can drive ANY toy, not just Lovense.
+     ============================================================ */
+  function extraUuids(){
+    return extraUuidEl.value.toLowerCase().split(/[\s,;]+/)
+      .map(function(u){ return u.trim(); })
+      .filter(function(u){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(u) || /^0x[0-9a-f]{1,4}$/.test(u); });
+  }
+
+  function propList(c){
+    var p = c.properties, out = [];
+    if (p.broadcast) out.push('BROADCAST');
+    if (p.read) out.push('READ');
+    if (p.writeWithoutResponse) out.push('WRITE-NR');
+    if (p.write) out.push('WRITE');
+    if (p.notify) out.push('NOTIFY');
+    if (p.indicate) out.push('INDICATE');
+    if (p.authenticatedSignedWrites) out.push('SIGNED-WRITE');
+    return out.join(' · ') || '(no properties)';
+  }
+
+  function fmtValue(dv){
+    var hexs = [], asc = '', i, b;
+    for (i = 0; i < dv.byteLength; i++){
+      b = dv.getUint8(i);
+      hexs.push(hex(b));
+      asc += (b >= 32 && b < 127) ? String.fromCharCode(b) : '.';
+    }
+    if (!dv.byteLength) return '(empty)';
+    return hexs.join(' ') + '    "' + asc + '"';
+  }
+
+  function mkBtn(label, fn){
+    var b = document.createElement('button');
+    b.textContent = label;
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function charRow(sv, c){
+    var row = document.createElement('div'); row.className = 'chr';
+    var u = document.createElement('div'); u.className = 'chrUuid'; u.textContent = c.uuid; row.appendChild(u);
+    var pr = document.createElement('div'); pr.className = 'props'; pr.textContent = propList(c); row.appendChild(pr);
+    var val = document.createElement('div'); val.className = 'val'; row.appendChild(val);
+    var btns = document.createElement('div'); btns.className = 'chipRow'; btns.style.marginTop = '6px';
+
+    if (c.properties.read){
+      readableChars.push({ c: c, el: val });
+      btns.appendChild(mkBtn('Read', function(){
+        c.readValue().then(function(dv){
+          var t = fmtValue(dv); val.textContent = t; log('READ ' + c.uuid + ' -> ' + t, 'rx');
+        }).catch(function(e){
+          val.textContent = 'read failed: ' + e.message; log('READ failed ' + c.uuid + ': ' + e.message, 'er');
+        });
+      }));
+    }
+
+    if (c.properties.notify || c.properties.indicate){
+      var on = false, handler = function(ev){
+        var t = fmtValue(ev.target.value); val.textContent = t; log('NOTIF ' + c.uuid + ' -> ' + t, 'rx');
+      };
+      var nb = mkBtn('Notify', function(){
+        if (!on){
+          c.startNotifications().then(function(){
+            on = true; nb.textContent = 'Notify ON';
+            c.addEventListener('characteristicvaluechanged', handler);
+            log('Notifications ON for ' + c.uuid);
+          }).catch(function(e){ log('startNotifications failed: ' + e.message, 'er'); });
+        } else {
+          c.removeEventListener('characteristicvaluechanged', handler);
+          c.stopNotifications().catch(function(){});
+          on = false; nb.textContent = 'Notify';
+        }
+      });
+      btns.appendChild(nb);
+      btns.appendChild(mkBtn('Set as RX', function(){
+        if (rxChar){ try { rxChar.removeEventListener('characteristicvaluechanged', onNotify); } catch(e){} }
+        rxChar = c; iRx.textContent = c.uuid;
+        c.startNotifications().then(function(){
+          c.addEventListener('characteristicvaluechanged', onNotify);
+          log('RX is now ' + c.uuid, 'hi');
+        }).catch(function(e){ log('Could not subscribe to ' + c.uuid + ': ' + e.message, 'er'); });
+        renderExplorer();
+      }));
+    }
+
+    if (c.properties.write || c.properties.writeWithoutResponse){
+      btns.appendChild(mkBtn('Set as TX', function(){
+        service = sv; txChar = c;
+        iService.textContent = sv.uuid;
+        iTx.textContent = c.uuid + (c.properties.writeWithoutResponse ? ' (no-rsp)' : ' (rsp)');
+        log('TX is now ' + c.uuid, 'hi');
+        setControlsEnabled(connected);
+        renderExplorer();
+      }));
+    }
+
+    if (txChar === c || rxChar === c){
+      var tag = document.createElement('span');
+      tag.className = 'svcTag';
+      tag.textContent = (txChar === c ? 'TX' : '') + (txChar === c && rxChar === c ? '+' : '') + (rxChar === c ? 'RX' : '');
+      u.appendChild(tag);
+    }
+
+    row.appendChild(btns);
+    return row;
+  }
+
+  function renderExplorer(){
+    explorerBox.innerHTML = '';
+    readableChars = [];
+    if (!discoveredServices.length){
+      setStatus(expStatus, 'Nothing discovered yet. Connect in section 2 first.', '');
+      return Promise.resolve();
+    }
+    setStatus(expStatus, 'Listing ' + discoveredServices.length + ' service(s)…', 'busy');
+    var chain = Promise.resolve(), total = 0;
+    discoveredServices.forEach(function(sv){
+      chain = chain.then(function(){
+        return sv.getCharacteristics().catch(function(){ return []; }).then(function(chars){
+          var box = document.createElement('div');
+          box.className = 'svc' + (sv === service ? ' primarySvc' : '');
+          var h = document.createElement('div'); h.className = 'svcName'; h.textContent = sv.uuid;
+          if (sv === service){
+            var t = document.createElement('span'); t.className = 'svcTag'; t.textContent = 'IN USE'; h.appendChild(t);
+          }
+          box.appendChild(h);
+          if (!chars.length){
+            var e = document.createElement('div'); e.className = 'props';
+            e.textContent = '(no characteristics readable from the browser)';
+            box.appendChild(e);
+          }
+          chars.forEach(function(c){ total++; box.appendChild(charRow(sv, c)); });
+          explorerBox.appendChild(box);
+        });
+      });
+    });
+    return chain.then(function(){
+      setStatus(expStatus, discoveredServices.length + ' service(s), ' + total + ' characteristic(s).\n' +
+        'Use "Set as TX" / "Set as RX" to point the console and the game at any characteristic pair.', 'ok');
+      expReadAll.disabled = !readableChars.length;
+    });
+  }
+
+  function readAll(){
+    var i = 0;
+    function step(){
+      if (i >= readableChars.length) return Promise.resolve();
+      var r = readableChars[i++];
+      return r.c.readValue()
+        .then(function(dv){ var t = fmtValue(dv); r.el.textContent = t; log('READ ' + r.c.uuid + ' -> ' + t, 'rx'); })
+        .catch(function(e){ r.el.textContent = 'read failed: ' + e.message; })
+        .then(function(){ return delay(60); })
+        .then(step);
+    }
+    log('Reading ' + readableChars.length + ' characteristic(s)…');
+    return step();
+  }
+
+  function rescanServices(){
+    if (!server || !server.connected){ setStatus(expStatus, 'Not connected.', 'err'); return; }
+    setStatus(expStatus, 'Re-scanning…', 'busy');
+    server.getPrimaryServices().catch(function(){ return []; })
+      .then(function(svcs){
+        if (svcs.length) return svcs;
+        return probeServices(server, deriveCandidates(device && device.name).concat(lovenseServiceList()));
+      })
+      .then(function(svcs){ discoveredServices = svcs; return renderExplorer(); });
+  }
+
+  function writeBytes(bytes){
+    if (!txChar) return Promise.reject(new Error('No TX characteristic selected'));
+    var data = new Uint8Array(bytes);
+    if (txChar.properties.writeWithoutResponse && txChar.writeValueWithoutResponse){
+      return txChar.writeValueWithoutResponse(data).catch(function(){ return txChar.writeValue(data); });
+    }
+    return txChar.writeValue(data);
+  }
+
+  /* ============================================================
      SECTION 3 — command layer
      ============================================================ */
   function pctToLevel(p){ return clamp(Math.round(p/100*20), 0, 20); }
@@ -986,6 +1226,7 @@
     manualEl.disabled = !on; mStop.disabled = !on;
     qType.disabled=!on; qBatt.disabled=!on; qStatus.disabled=!on; qPower.disabled=!on;
     rawSend.disabled = !on;
+    expRefresh.disabled = !on;
     startBtn.disabled = !on || gameRunning;
     if (!on){ stopBtn.disabled = true; burstBtn.disabled = true; }
   }
@@ -1090,6 +1331,8 @@
   disconnectBtn.addEventListener('click', manualDisconnect);
   retryBtn.addEventListener('click', retrySameDevice);
   advBtn.addEventListener('click', checkAdvertising);
+  expRefresh.addEventListener('click', rescanServices);
+  expReadAll.addEventListener('click', readAll);
 
   modelEl.addEventListener('change', function(){
     customWrap.hidden = modelEl.value !== 'custom';
@@ -1109,7 +1352,19 @@
   qPower.addEventListener('click', function(){ send('PowerOff;',   {force:true}); });
 
   rawSend.addEventListener('click', function(){
-    var c = rawCmd.value.trim(); if (!c) return; send(c, {force:true});
+    var c = rawCmd.value.trim(); if (!c) return;
+    if (rawFmt.value === 'hex'){
+      var bytes = c.split(/[\s,:;]+/).filter(Boolean).map(function(h){ return parseInt(h, 16); });
+      if (bytes.some(function(b){ return isNaN(b) || b < 0 || b > 255; })){
+        log('Bad hex input — use e.g. "56 69 62 72 61 74 65 3a 31 30 3b"', 'er'); return;
+      }
+      enqueue(function(){
+        log('TX  [hex] ' + bytes.map(function(b){ return hex(b); }).join(' '), 'tx');
+        return writeBytes(bytes).catch(function(e){ log('TX FAILED: ' + e.message, 'er'); });
+      });
+    } else {
+      send(c, {force:true});
+    }
   });
   rawCmd.addEventListener('keydown', function(e){ if (e.key === 'Enter') rawSend.click(); });
 
