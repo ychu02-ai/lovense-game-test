@@ -3,75 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Lovense BLE Direct — Game &amp; Protocol Console</title>
+<title>Lovense BLE Direct — Scanner, Console &amp; Game</title>
 <style>
   :root{
     color-scheme: dark;
-    --bg:#14141c;
-    --panel:#1e1e2a;
-    --panel2:#252534;
-    --border:#33334a;
-    --text:#e8e8f0;
-    --muted:#9494ac;
-    --accent:#ff4d8d;
-    --accent2:#7c5cff;
-    --ok:#3ddc97;
-    --warn:#ffb648;
-    --danger:#ff5c5c;
+    --bg:#14141c; --panel:#1e1e2a; --panel2:#252534; --border:#33334a;
+    --text:#e8e8f0; --muted:#9494ac; --accent:#ff4d8d; --accent2:#7c5cff;
+    --ok:#3ddc97; --warn:#ffb648; --danger:#ff5c5c;
   }
   *{box-sizing:border-box;}
   body{
-    margin:0;
-    background:linear-gradient(160deg,#14141c,#1a1626);
-    color:var(--text);
+    margin:0; background:linear-gradient(160deg,#14141c,#1a1626); color:var(--text);
     font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    padding:24px 14px 60px;
+    min-height:100vh; display:flex; justify-content:center; padding:22px 12px 60px;
   }
-  .container{ width:100%; max-width:580px; }
+  .container{ width:100%; max-width:600px; }
   h1{ font-size:20px; margin:0 0 4px; letter-spacing:.3px; }
-  .subtitle{ color:var(--muted); font-size:13px; margin:0 0 20px; line-height:1.5; }
-  section{
-    background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:14px;
-    padding:16px;
-    margin-bottom:14px;
+  .subtitle{ color:var(--muted); font-size:12.5px; margin:0 0 18px; line-height:1.55; }
+  section{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px; }
+  section h2{ font-size:12.5px; margin:0 0 12px; color:var(--muted); font-weight:600; letter-spacing:.6px; text-transform:uppercase; }
+  .statusBox{
+    font-size:13px; padding:10px 12px; border-radius:10px; background:var(--panel2);
+    margin-bottom:12px; border:1px solid var(--border); white-space:pre-wrap;
+    word-break:break-word; line-height:1.55;
   }
-  section h2{
-    font-size:13px; margin:0 0 12px; color:var(--muted);
-    font-weight:600; letter-spacing:.6px; text-transform:uppercase;
-  }
-  #connStatus{
-    font-size:13px; padding:10px 12px; border-radius:10px;
-    background:var(--panel2); margin-bottom:12px;
-    border:1px solid var(--border); white-space:pre-wrap; word-break:break-word;
-    line-height:1.5;
-  }
-  #connStatus.ok{ color:var(--ok); border-color:#2c6a52; }
-  #connStatus.err{ color:var(--danger); border-color:#6a2c2c; }
-  #connStatus.busy{ color:var(--warn); border-color:#6a5227; }
+  .statusBox.ok{ color:var(--ok); border-color:#2c6a52; }
+  .statusBox.err{ color:var(--danger); border-color:#6a2c2c; }
+  .statusBox.busy{ color:var(--warn); border-color:#6a5227; }
   label{ display:block; font-size:12px; color:var(--muted); margin:0 0 5px; }
   .row{ display:flex; gap:8px; flex-wrap:wrap; }
-  .row > div{ flex:1 1 140px; }
+  .row > div{ flex:1 1 150px; }
   input[type=text], input[type=number], select{
-    width:100%; background:var(--panel2); border:1px solid var(--border);
-    color:var(--text); padding:9px 10px; border-radius:10px;
-    font-size:14px; outline:none; font-family:inherit;
+    width:100%; background:var(--panel2); border:1px solid var(--border); color:var(--text);
+    padding:9px 10px; border-radius:10px; font-size:14px; outline:none; font-family:inherit;
   }
   input:focus, select:focus{ border-color:var(--accent2); }
   input::placeholder{ color:#6a6a82; }
   input[type=range]{ width:100%; accent-color:var(--accent); }
-  .check{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); }
-  .check input{ width:auto; }
+  .check{ display:flex; align-items:flex-start; gap:8px; margin-top:9px; font-size:12px; color:var(--muted); line-height:1.45; }
+  .check input{ width:auto; margin-top:2px; }
   .check label{ margin:0; }
   button{
-    border:none; border-radius:10px; padding:10px 14px;
-    font-size:14px; font-weight:600; cursor:pointer; color:#fff;
-    transition:opacity .15s, transform .05s, filter .15s; font-family:inherit;
-    background:var(--panel2); border:1px solid var(--border);
+    border:none; border-radius:10px; padding:10px 14px; font-size:14px; font-weight:600;
+    cursor:pointer; color:#fff; transition:opacity .15s, transform .05s;
+    font-family:inherit; background:var(--panel2); border:1px solid var(--border);
   }
   button:active{ transform:scale(.97); }
   button:disabled{ opacity:.35; cursor:not-allowed; }
@@ -84,74 +59,108 @@
   .buttons > button{ flex:1; }
   .chipRow{ display:flex; gap:8px; flex-wrap:wrap; }
   .chipRow button{ flex:1 1 auto; font-size:12px; padding:8px 10px; font-weight:500; }
-  #burstBtn{
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    border-color:transparent; width:100%; padding:17px; font-size:16px; margin-top:10px;
-  }
+  #burstBtn{ background:linear-gradient(135deg,var(--accent),var(--accent2)); border-color:transparent; width:100%; padding:17px; font-size:16px; margin-top:10px; }
   .stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
   .stat{ background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:9px 11px; }
   .stat .label{ font-size:11px; color:var(--muted); margin-bottom:3px; }
   .stat .value{ font-size:17px; font-weight:700; }
-  #strengthBarWrap{
-    background:var(--panel2); border:1px solid var(--border);
-    border-radius:999px; height:14px; overflow:hidden; margin-bottom:12px;
-  }
-  #strengthBar{
-    height:100%; width:0%;
-    background:linear-gradient(90deg,var(--accent2),var(--accent));
-    transition:width .2s linear;
-  }
-  .kv{ font-size:12px; color:var(--muted); line-height:1.7; word-break:break-all; }
+  #strengthBarWrap{ background:var(--panel2); border:1px solid var(--border); border-radius:999px; height:14px; overflow:hidden; margin-bottom:12px; }
+  #strengthBar{ height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .2s linear; }
+  .kv{ font-size:12px; color:var(--muted); line-height:1.75; word-break:break-all; }
   .kv b{ color:var(--text); font-weight:600; }
   #log{
-    background:#0e0e15; border:1px solid var(--border); border-radius:10px;
-    padding:10px 12px; height:190px; overflow-y:auto;
-    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:#0e0e15; border:1px solid var(--border); border-radius:10px; padding:10px 12px;
+    height:200px; overflow-y:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     font-size:11.5px; color:#9adfc0; white-space:pre-wrap; word-break:break-all;
   }
-  #log .tx{ color:#8fb8ff; }
-  #log .rx{ color:#ffd48f; }
-  #log .er{ color:#ff8f8f; }
+  #log .tx{ color:#8fb8ff; } #log .rx{ color:#ffd48f; } #log .er{ color:#ff8f8f; } #log .hi{ color:#ff9ecb; }
   .hint{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.65; }
   details summary{ cursor:pointer; color:var(--muted); font-size:12px; margin-top:10px; }
-  details .body{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.7; }
-  details .body ol{ padding-left:18px; margin:6px 0; }
-  details .body li{ margin-bottom:5px; }
+  details .body{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.75; }
+  details .body ol, details .body ul{ padding-left:18px; margin:6px 0; }
+  details .body li{ margin-bottom:6px; }
   code{ background:var(--panel2); padding:1px 5px; border-radius:5px; font-size:11.5px; }
   .divider{ height:1px; background:var(--border); margin:14px 0; }
+  /* scanner */
+  #scanList{ margin-top:10px; max-height:280px; overflow-y:auto; }
+  .dev{
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px;
+    padding:9px 11px; margin-bottom:7px; font-size:12px; line-height:1.55;
+  }
+  .dev.lovense{ border-color:var(--accent); background:#2a1e2a; }
+  .dev .nm{ font-size:13.5px; font-weight:700; color:var(--text); }
+  .dev .meta{ color:var(--muted); word-break:break-all; }
+  .dev .tag{
+    display:inline-block; background:var(--accent); color:#fff; font-size:10px;
+    font-weight:700; padding:1px 6px; border-radius:5px; margin-left:6px; vertical-align:2px;
+  }
+  .dev button{ margin-top:7px; font-size:11.5px; padding:6px 10px; font-weight:500; }
+  .rssi{ float:right; font-family:ui-monospace,monospace; color:var(--muted); font-size:11.5px; }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>Lovense BLE Direct</h1>
-  <p class="subtitle">Connects straight to the toy over Web Bluetooth — no Lovense app, no LAN Game Mode.<br>Requires <b>Chrome on Android</b> (or desktop Chrome/Edge) over <b>HTTPS</b>.</p>
+  <p class="subtitle">Talks to the toy over Web Bluetooth — no Lovense app, no LAN Game Mode.<br>Needs <b>Chrome on Android</b> (or desktop Chrome/Edge) served over <b>HTTPS</b>.</p>
 
-  <!-- ========== CONNECTION ========== -->
+  <!-- ========== 1. SCANNER ========== -->
   <section>
-    <h2>1 · Connection</h2>
-    <div id="connStatus">Not connected.</div>
-
+    <h2>1 · Advertisement scanner <span style="text-transform:none;font-weight:400;">(diagnostic)</span></h2>
+    <div class="statusBox" id="scanStatus">Idle. Use this first if you don't know what your toy advertises as.</div>
     <div class="buttons">
+      <button id="scanBtn" class="primary">Start scan</button>
+      <button id="scanStopBtn" class="bad" disabled>Stop</button>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="scanLovenseOnly" checked>
+      <label for="scanLovenseOnly">Only show likely Lovense devices (manufacturer ID 620, <code>LVS-</code>/<code>LOVE-</code> names, or Lovense-shaped service UUIDs)</label>
+    </div>
+    <div id="scanList"></div>
+    <details>
+      <summary>Scanner says "not supported" — how to enable it</summary>
+      <div class="body">
+        Live scanning is still an experimental Chrome API. On Android open
+        <code>chrome://flags/#enable-experimental-web-platform-features</code>, set it to <b>Enabled</b>, relaunch Chrome,
+        and reload this page. If you'd rather not, skip to section 2 and use the <b>Manufacturer-data filter</b> —
+        it needs no flag and will show your toy even if it has been renamed.
+      </div>
+    </details>
+  </section>
+
+  <!-- ========== 2. CONNECTION ========== -->
+  <section>
+    <h2>2 · Connection</h2>
+    <div class="statusBox" id="connStatus">Not connected.</div>
+
+    <label>Device picker filter</label>
+    <select id="filterMode">
+      <option value="mfg">Manufacturer data — Lovense company ID 620 (recommended)</option>
+      <option value="name">Name prefix — LVS- / LOVE- / model names</option>
+      <option value="exact">Exact name (filled in from the scanner)</option>
+      <option value="all">Show every BLE device nearby</option>
+    </select>
+    <div class="mt" id="exactWrap" hidden>
+      <label>Exact advertised name</label>
+      <input type="text" id="exactName" placeholder="e.g. LVS-Z001 or your renamed toy">
+    </div>
+
+    <div class="buttons mt">
       <button id="connectBtn" class="primary">Scan &amp; Connect</button>
       <button id="disconnectBtn" class="bad" disabled>Disconnect</button>
     </div>
 
-    <div class="check">
-      <input type="checkbox" id="showAll">
-      <label for="showAll">Show <b>all</b> BLE devices in the picker (use if your toy doesn't appear)</label>
-    </div>
     <div class="check">
       <input type="checkbox" id="autoReconnect" checked>
       <label for="autoReconnect">Auto-reconnect if the link drops</label>
     </div>
 
     <div class="mt">
-      <label>Extra service UUID (optional — only if auto-discovery fails)</label>
-      <input type="text" id="extraUuid" placeholder="e.g. 4f300001-0023-4bd4-bbd5-a6920e4c5653">
+      <label>Extra service UUID (only if auto-discovery finds nothing)</label>
+      <input type="text" id="extraUuid" placeholder="e.g. 45300001-0023-4bd4-bbd5-a6920e4c5653">
     </div>
 
     <div class="divider"></div>
-    <div class="kv" id="devInfo">
+    <div class="kv">
       <div>Device: <b id="iName">—</b></div>
       <div>Service: <b id="iService">—</b></div>
       <div>TX (write): <b id="iTx">—</b></div>
@@ -161,32 +170,40 @@
     </div>
 
     <details>
-      <summary>Toy won't show up / won't connect — checklist</summary>
+      <summary>Toy still not showing up — read this</summary>
       <div class="body">
         <ol>
-          <li><b>Force-quit the Lovense app</b> (and Lovense Remote / Connect on any nearby phone or PC). While the app holds the toy, it stops advertising and Chrome cannot see it.</li>
-          <li><b>Do NOT pair it in Android Bluetooth settings.</b> Lovense toys are BLE-only; a system pairing entry can block Chrome. If one exists, "Forget" it.</li>
-          <li><b>Wake the toy.</b> Short-press the button once — the LED should be <b>blinking</b> (advertising). Solid / off = asleep or already connected to something.</li>
-          <li>Android: Bluetooth <b>and</b> Location services must be ON, and Chrome needs the "Nearby devices" permission (Android 12+) or "Location" (Android 11−).</li>
-          <li>The page must be served over <b>https://</b> (GitHub Pages is fine). <code>file://</code> will not work.</li>
-          <li>Toy must be charged above ~20%; low battery kills BLE range first.</li>
-          <li>If the picker is empty, tick "Show all BLE devices" — Lovense names vary (<code>LVS-…</code>, <code>LOVE-…</code>, or the bare model name).</li>
-          <li>If it connects but "no usable service" appears, install <b>nRF Connect</b>, read the toy's service UUID, and paste it into "Extra service UUID" above.</li>
+          <li><b>The toy may have been renamed.</b> A custom name set in the Lovense app <i>replaces</i> the advertised
+            <code>LVS-…</code> name, which is why a name-prefix search finds nothing. The manufacturer-data filter above
+            ignores the name entirely. To restore the default, clear the name field in the Lovense app's toy settings.</li>
+          <li><b>Force-quit every Lovense app</b> on every nearby phone/PC (Remote, Connect, Lovense Bridge). A held
+            connection stops the toy advertising, so nothing — not Chrome, not nRF Connect — can see it.</li>
+          <li><b>Do not pair it in Android Bluetooth settings.</b> These toys are BLE-only; a system pairing entry can
+            block app-level connections. If one exists, "Forget" it.</li>
+          <li><b>Wake it properly.</b> Charge it above ~30% first, then press the power button until the LED
+            <b>blinks</b>. Solid or dark = asleep or already connected. A toy that has been idle for a while stops
+            advertising until the button is pressed again.</li>
+          <li><b>If even the Lovense app can't find it</b>, that is a toy-side problem, not a browser one — charge it
+            fully on the magnetic cable (check the pins are clean and seated) and try again.</li>
+          <li>Android: Bluetooth <b>and</b> Location on; Chrome needs "Nearby devices" (Android 12+) or "Location"
+            (Android 11−) permission.</li>
+          <li>Page must be on <b>https://</b>. <code>file://</code> will not work.</li>
         </ol>
       </div>
     </details>
   </section>
 
-  <!-- ========== TOY / PROTOCOL ========== -->
+  <!-- ========== 3. TOY / PROTOCOL ========== -->
   <section>
-    <h2>2 · Toy &amp; protocol</h2>
+    <h2>3 · Toy &amp; protocol</h2>
     <div class="row">
       <div>
-        <label>Toy model (decides which command is sent)</label>
+        <label>Command set <span id="autoTag" style="color:var(--ok);"></span></label>
         <select id="model">
-          <option value="single">Gush / Gush 2 — single vibrator (Vibrate:n)</option>
-          <option value="dual">Edge 2 — dual vibrator (Vibrate1/Vibrate2)</option>
-          <option value="thrust">Solace Pro — thruster (Thrusting:n)</option>
+          <option value="single">Single vibrator — Gush, Lush, Hush, Domi… (Vibrate:n)</option>
+          <option value="dual">Dual vibrator — Edge / Edge 2 (Vibrate1 + Vibrate2)</option>
+          <option value="rotate">Vibrate + rotate — Nora (Vibrate:n + Rotate:n)</option>
+          <option value="thrust">Thruster — Solace / Solace Pro / Gravity (Thrusting:n) ⚠ unverified</option>
           <option value="custom">Custom prefix…</option>
         </select>
       </div>
@@ -204,6 +221,7 @@
       <button id="mStop" disabled>Stop (0)</button>
       <button id="qType" disabled>DeviceType;</button>
       <button id="qBatt" disabled>Battery;</button>
+      <button id="qStatus" disabled>Status:1;</button>
       <button id="qPower" disabled>PowerOff;</button>
     </div>
 
@@ -216,9 +234,9 @@
     </div>
   </section>
 
-  <!-- ========== GAME ========== -->
+  <!-- ========== 4. GAME ========== -->
   <section>
-    <h2>3 · Game</h2>
+    <h2>4 · Game</h2>
     <div class="stats">
       <div class="stat"><div class="label">Level</div><div class="value" id="levelDisplay">—</div></div>
       <div class="stat"><div class="label">Base strength</div><div class="value" id="strengthDisplay">—</div></div>
@@ -233,13 +251,13 @@
     <button id="burstBtn" disabled>⚡ Burst — 2 s at 10%</button>
     <p class="hint">
       Starts at 10%. Every 5 s the pattern switches and strength rises by 10% (caps at 100%, patterns keep cycling).
-      <b>Burst</b> drops to a flat 10% for 2 s, then resets you to level 1 — same as restarting. Burst has a 20 s cooldown.
+      <b>Burst</b> drops to a flat 10% for 2 s, then resets you to level 1 — same as restarting. 20 s cooldown.
     </p>
   </section>
 
-  <!-- ========== LOG ========== -->
+  <!-- ========== 5. LOG ========== -->
   <section>
-    <h2>4 · BLE log</h2>
+    <h2>5 · BLE log</h2>
     <div id="log"></div>
     <div class="chipRow mt">
       <button id="clearLog">Clear</button>
@@ -254,171 +272,306 @@
   var $ = function(id){ return document.getElementById(id); };
 
   /* ============================================================
-     BLE constants
+     Lovense BLE facts
+     ------------------------------------------------------------
+     · Advertised name: "LVS-<model><fw>" or "LOVE-…" — BUT a name
+       set in the Lovense app REPLACES it, so name matching alone
+       is unreliable.
+     · Manufacturer data: Bluetooth SIG company ID 620, payload
+       starting 0xFF 0x21. This survives renaming → best filter.
+     · GATT, three generations:
+         gen1  0000fff0-…  tx fff2  rx fff1
+         gen2  6e400001-…  (Nordic UART) tx …0002 rx …0003
+         gen3  <L>300001-002Z-4bd4-bbd5-a6920e4c5653
+               where <L> = hex of the model's ASCII letter
+               (0x50 'P' = Edge, 0x5a 'Z' = Hush, …) and Z = 3 or 4.
+               tx = …300002-…, rx = …300003-…
+     · No authentication or encryption anywhere in the protocol —
+       plain ASCII commands ending in ';'.
      ============================================================ */
 
-  // Lovense's modern GATT services all look like XX300001-0023-4bd4-bbd5-a6920e4c5653
-  // where XX is a per-model byte. Web Bluetooth only lets us *see* services we
-  // declared up front, so we declare the whole plausible range plus the legacy ones.
+  var LOVENSE_COMPANY_ID = 620;
+
   function lovenseServiceList(){
     var list = [];
-    for (var b = 0x30; b <= 0x7f; b++){
+    // gen3: one byte per uppercase-ASCII model letter (0x40–0x5f), suffix group 0023/0024/0025
+    var groups = ['0023','0024','0025'];
+    for (var b = 0x40; b <= 0x5f; b++){
       var hx = b.toString(16);
       if (hx.length < 2) hx = '0' + hx;
-      list.push(hx + '300001-0023-4bd4-bbd5-a6920e4c5653');
+      for (var g = 0; g < groups.length; g++){
+        list.push(hx + '300001-' + groups[g] + '-4bd4-bbd5-a6920e4c5653');
+      }
     }
-    list.push('0000fff0-0000-1000-8000-00805f9b34fb');   // legacy Lovense (Max/Nora/Lush 1)
-    list.push('0000ffe0-0000-1000-8000-00805f9b34fb');   // seen on some units
-    list.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');   // Nordic UART
-    list.push('0000180a-0000-1000-8000-00805f9b34fb');   // Device Information
-    list.push('0000180f-0000-1000-8000-00805f9b34fb');   // Battery Service
+    list.push('0000fff0-0000-1000-8000-00805f9b34fb');  // gen1
+    list.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');  // gen2 (Nordic UART)
+    list.push('0000ffe0-0000-1000-8000-00805f9b34fb');
+    list.push('0000180a-0000-1000-8000-00805f9b34fb');  // Device Information
+    list.push('0000180f-0000-1000-8000-00805f9b34fb');  // Battery
     return list;
   }
 
-  var NAME_PREFIXES = ['LVS','LOVE','Lovense','LVS-','Gush','Edge','Solace','Hush','Lush','Domi','Nora','Max','Ferri','Ambi','Osci','Hyphy','Tenera','Ridge','Flexer','Gravity','Vulse','Mission','Gemini','Lapis'];
+  var NAME_PREFIXES = ['LVS','LOVE','Lovense','Gush','Edge','Solace','Hush','Lush','Domi','Nora',
+                       'Max','Ferri','Ambi','Osci','Diamo','Calor','Gemini','Hyphy','Gravity','Lapis','Ridge','Flexer','Vulse'];
+
+  // DeviceType reply is "<code>:<fw>:<mac>;" — the code identifies the model.
+  var TYPE_MAP = {
+    'A':['Nora','rotate'], 'C':['Nora','rotate'],
+    'B':['Max','single'],
+    'P':['Edge','dual'], 'PA':['Edge','dual'], 'PB':['Edge 2','dual'],
+    'S':['Lush','single'], 'Z':['Hush','single'], 'W':['Domi','single'],
+    'L':['Ambi','single'], 'X':['Ferri','single'], 'R':['Diamo','single'],
+    'T':['Calor','single'], 'O':['Osci','single'], 'OC':['Osci 2','single'],
+    'N':['Gemini','single'], 'U':['Lapis','single'],
+    'EA':['Gravity','thrust'], 'EB':['Hyphy','single'],
+    'ED':['Gush','single'], 'EZ':['Gush 2','single'],
+    'H':['Solace','thrust'], 'BA':['Solace Pro','thrust']
+  };
 
   /* ============================================================
      State
      ============================================================ */
-  var device = null, server = null, service = null, txChar = null, rxChar = null;
-  var connected = false, connecting = false;
-  var lastSentCmd = '', lastSentAt = 0;
+  var device=null, server=null, service=null, txChar=null, rxChar=null;
+  var connected=false, connecting=false;
+  var lastSentCmd='', lastSentAt=0;
   var MIN_WRITE_GAP_MS = 90;
 
-  var gameRunning = false, bursting = false;
-  var level = 1, gameStartTime = null, patternStartTime = null;
-  var levelTimer = null, tickTimer = null, elapsedTimer = null;
-  var burstTimeout = null, burstCooldownUntil = 0, burstCooldownInterval = null;
-  var wakeLock = null;
+  var gameRunning=false, bursting=false;
+  var level=1, gameStartTime=null, patternStartTime=null;
+  var levelTimer=null, tickTimer=null, elapsedTimer=null;
+  var burstTimeout=null, burstCooldownUntil=0, burstCooldownInterval=null;
+  var wakeLock=null;
+
+  var scanObj=null, scanSeen={}, scanRenderTimer=null;
 
   /* ============================================================
-     Game tuning (ported 1:1 from lovense_game.html)
+     Game tuning (ported from lovense_game.html)
      ============================================================ */
-  var LEVEL_INTERVAL_MS = 5000;
-  var PATTERN_TICK_MS   = 250;
-  var BURST_DURATION_SEC= 2;
-  var BURST_STRENGTH    = 10;
-  var BURST_CD_MS       = 20000;
-  var BURST_LABEL       = '⚡ Burst — 2 s at 10%';
-  var START_STRENGTH    = 10;
-  var STRENGTH_STEP     = 10;
-  var MAX_STRENGTH      = 100;
+  var LEVEL_INTERVAL_MS=5000, PATTERN_TICK_MS=250;
+  var BURST_DURATION_SEC=2, BURST_STRENGTH=10, BURST_CD_MS=20000;
+  var BURST_LABEL='⚡ Burst — 2 s at 10%';
+  var START_STRENGTH=10, STRENGTH_STEP=10, MAX_STRENGTH=100;
 
-  function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
-  function pseudoRandom(seed){
-    var x = Math.sin(seed * 12.9898) * 43758.5453;
-    return x - Math.floor(x);
-  }
+  function clamp(v,mn,mx){ return Math.min(mx, Math.max(mn, v)); }
+  function pseudoRandom(seed){ var x=Math.sin(seed*12.9898)*43758.5453; return x-Math.floor(x); }
 
   var PATTERNS = [
-    { name:'Steady', calc:function(t,base){ return base; } },
-    { name:'Pulse',  calc:function(t,base){ var c=t%1.0; return c<0.6 ? base : base*0.3; } },
-    { name:'Wave',   calc:function(t,base){ var w=Math.sin(2*Math.PI*t/2.0); return clamp(base*0.7+base*0.3*w,0,100); } },
-    { name:'Spike',  calc:function(t,base){ var c=t%1.5; return c<0.2 ? 100 : base*0.5; } },
-    { name:'Random', calc:function(t,base){ var r=pseudoRandom(Math.floor(t/0.4)); return clamp(base+(r-0.5)*30,0,100); } }
+    { name:'Steady', calc:function(t,b){ return b; } },
+    { name:'Pulse',  calc:function(t,b){ var c=t%1.0; return c<0.6?b:b*0.3; } },
+    { name:'Wave',   calc:function(t,b){ return clamp(b*0.7+b*0.3*Math.sin(2*Math.PI*t/2.0),0,100); } },
+    { name:'Spike',  calc:function(t,b){ var c=t%1.5; return c<0.2?100:b*0.5; } },
+    { name:'Random', calc:function(t,b){ return clamp(b+(pseudoRandom(Math.floor(t/0.4))-0.5)*30,0,100); } }
   ];
 
   /* ============================================================
      DOM
      ============================================================ */
+  var scanStatus=$('scanStatus'), scanBtn=$('scanBtn'), scanStopBtn=$('scanStopBtn'),
+      scanLovenseOnly=$('scanLovenseOnly'), scanList=$('scanList');
   var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn');
-  var showAllEl=$('showAll'), autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid');
+  var filterModeEl=$('filterMode'), exactWrap=$('exactWrap'), exactNameEl=$('exactName');
+  var autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid');
   var iName=$('iName'), iService=$('iService'), iTx=$('iTx'), iRx=$('iRx'), iType=$('iType'), iBatt=$('iBatt');
-  var modelEl=$('model'), customWrap=$('customWrap'), customPrefixEl=$('customPrefix');
+  var modelEl=$('model'), autoTag=$('autoTag'), customWrap=$('customWrap'), customPrefixEl=$('customPrefix');
   var manualEl=$('manual'), manualVal=$('manualVal'), manualLv=$('manualLv'), mStop=$('mStop');
-  var qType=$('qType'), qBatt=$('qBatt'), qPower=$('qPower');
+  var qType=$('qType'), qBatt=$('qBatt'), qStatus=$('qStatus'), qPower=$('qPower');
   var rawCmd=$('rawCmd'), rawSend=$('rawSend');
-  var levelDisplay=$('levelDisplay'), strengthDisplay=$('strengthDisplay');
-  var patternDisplay=$('patternDisplay'), timeDisplay=$('timeDisplay'), strengthBar=$('strengthBar');
+  var levelDisplay=$('levelDisplay'), strengthDisplay=$('strengthDisplay'),
+      patternDisplay=$('patternDisplay'), timeDisplay=$('timeDisplay'), strengthBar=$('strengthBar');
   var startBtn=$('startBtn'), stopBtn=$('stopBtn'), burstBtn=$('burstBtn');
   var logEl=$('log');
 
-  /* ============================================================
-     Logging
-     ============================================================ */
   function log(msg, cls){
     var t = new Date().toLocaleTimeString('en-GB',{hour12:false});
-    var span = document.createElement('span');
-    if (cls) span.className = cls;
-    span.textContent = '[' + t + '] ' + msg + '\n';
-    logEl.appendChild(span);
+    var s = document.createElement('span');
+    if (cls) s.className = cls;
+    s.textContent = '[' + t + '] ' + msg + '\n';
+    logEl.appendChild(s);
     logEl.scrollTop = logEl.scrollHeight;
   }
-  function setStatus(text, kind){
-    connStatusEl.textContent = text;
-    connStatusEl.className = kind || '';
+  function setStatus(el, text, kind){ el.textContent = text; el.className = 'statusBox' + (kind ? ' ' + kind : ''); }
+  function setConn(text, kind){ setStatus(connStatusEl, text, kind); }
+  function setScan(text, kind){ setStatus(scanStatus, text, kind); }
+  function delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function hex(n, w){ var s = n.toString(16).toUpperCase(); while (s.length < (w||2)) s = '0'+s; return s; }
+  function bytesToHex(dv){
+    var out=[], i;
+    for (i=0;i<dv.byteLength && i<20;i++) out.push(hex(dv.getUint8(i)));
+    return out.join(' ') + (dv.byteLength>20 ? ' …' : '');
   }
 
   /* ============================================================
-     Write queue — GATT allows exactly ONE operation at a time.
-     Overlapping writes are THE most common cause of Lovense
-     Web Bluetooth failures ("GATT operation already in progress").
+     SECTION 1 — advertisement scanner (experimental API)
+     ============================================================ */
+  function looksLovense(rec){
+    if (rec.company === LOVENSE_COMPANY_ID) return true;
+    if (rec.name && /^(LVS|LOVE)[-_]/i.test(rec.name)) return true;
+    for (var i=0;i<rec.uuids.length;i++){
+      if (/300001-002[0-9a-f]-4bd4-bbd5-a6920e4c5653$/i.test(rec.uuids[i])) return true;
+      if (/^0000fff0-/i.test(rec.uuids[i])) return true;
+    }
+    return false;
+  }
+
+  function onAdvertisement(ev){
+    var id = ev.device.id;
+    var rec = scanSeen[id] || { id:id, name:null, rssi:null, uuids:[], company:null, mfg:'', count:0 };
+    rec.name = ev.device.name || rec.name;
+    if (typeof ev.rssi === 'number') rec.rssi = ev.rssi;
+    rec.count++;
+    if (ev.uuids && ev.uuids.length) rec.uuids = ev.uuids.slice();
+    if (ev.manufacturerData){
+      ev.manufacturerData.forEach(function(dv, company){
+        rec.company = company;
+        rec.mfg = bytesToHex(dv);
+      });
+    }
+    rec.lovense = looksLovense(rec);
+    if (rec.lovense && !rec.announced){
+      rec.announced = true;
+      log('SCAN ★ Lovense-looking device: ' + (rec.name || '(no name)') +
+          '  company=' + rec.company + '  uuids=' + (rec.uuids.join(',') || 'none'), 'hi');
+    }
+    scanSeen[id] = rec;
+    if (!scanRenderTimer) scanRenderTimer = setTimeout(renderScan, 400);
+  }
+
+  function renderScan(){
+    scanRenderTimer = null;
+    var arr = Object.keys(scanSeen).map(function(k){ return scanSeen[k]; });
+    if (scanLovenseOnly.checked) arr = arr.filter(function(r){ return r.lovense; });
+    arr.sort(function(a,b){ return (b.rssi||-999) - (a.rssi||-999); });
+
+    scanList.innerHTML = '';
+    if (!arr.length){
+      var e = document.createElement('div');
+      e.className = 'dev';
+      e.innerHTML = '<div class="meta">Nothing matched yet. Hold the toy right next to the phone and press its button so the LED blinks. Untick the filter to see every device.</div>';
+      scanList.appendChild(e);
+      return;
+    }
+    arr.forEach(function(r){
+      var d = document.createElement('div');
+      d.className = 'dev' + (r.lovense ? ' lovense' : '');
+      var name = r.name || '(no name)';
+      var html = '<span class="rssi">' + (r.rssi != null ? r.rssi + ' dBm' : '') + '</span>' +
+                 '<div class="nm">' + escapeHtml(name) + (r.lovense ? '<span class="tag">LOVENSE?</span>' : '') + '</div>' +
+                 '<div class="meta">seen ' + r.count + '×' +
+                 (r.company != null ? ' · company ' + r.company + ' [' + r.mfg + ']' : '') +
+                 (r.uuids.length ? '<br>uuid: ' + escapeHtml(r.uuids.join(', ')) : '') + '</div>';
+      d.innerHTML = html;
+      if (r.name){
+        var b = document.createElement('button');
+        b.textContent = 'Use this name for connecting';
+        b.addEventListener('click', function(){
+          exactNameEl.value = r.name;
+          filterModeEl.value = 'exact';
+          exactWrap.hidden = false;
+          log('Connect filter set to exact name "' + r.name + '".');
+          setConn('Filter set to exact name "' + r.name + '". Stop the scan, then press Scan & Connect.', 'ok');
+          document.getElementById('connStatus').scrollIntoView({behavior:'smooth', block:'center'});
+        });
+        d.appendChild(b);
+      }
+      scanList.appendChild(d);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function startScan(){
+    if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan){
+      setScan('This Chrome build does not expose navigator.bluetooth.requestLEScan().\nEnable chrome://flags/#enable-experimental-web-platform-features and relaunch — or skip this section and use the Manufacturer-data filter in section 2.', 'err');
+      return;
+    }
+    scanSeen = {};
+    scanList.innerHTML = '';
+    setScan('Requesting scan permission…', 'busy');
+    navigator.bluetooth.requestLEScan({ acceptAllAdvertisements:true, keepRepeatedDevices:true })
+      .then(function(s){
+        scanObj = s;
+        navigator.bluetooth.addEventListener('advertisementreceived', onAdvertisement);
+        scanBtn.disabled = true; scanStopBtn.disabled = false;
+        setScan('Scanning… Press the toy\'s button so its LED blinks, and hold it next to the phone.\nRows with a LOVENSE? tag are the ones that matter.', 'ok');
+        log('LE scan started.');
+      })
+      .catch(function(err){
+        setScan('Scan could not start: ' + err.name + ' — ' + err.message +
+                '\nEnable chrome://flags/#enable-experimental-web-platform-features, or use the Manufacturer-data filter in section 2 instead.', 'err');
+        log('requestLEScan failed: ' + err.name + ' ' + err.message, 'er');
+      });
+  }
+
+  function stopScan(){
+    if (scanObj){ try{ scanObj.stop(); }catch(e){} scanObj = null; }
+    try { navigator.bluetooth.removeEventListener('advertisementreceived', onAdvertisement); } catch(e){}
+    scanBtn.disabled = false; scanStopBtn.disabled = true;
+    setScan('Scan stopped. ' + Object.keys(scanSeen).length + ' device(s) seen.', '');
+    log('LE scan stopped.');
+  }
+
+  /* ============================================================
+     SECTION 2 — connect
      ============================================================ */
   var queue = Promise.resolve();
-  function enqueue(fn){
-    queue = queue.then(fn, fn);
-    return queue;
-  }
+  function enqueue(fn){ queue = queue.then(fn, fn); return queue; }
 
   function rawWrite(str){
     if (!txChar) return Promise.reject(new Error('No TX characteristic'));
     var data = new TextEncoder().encode(str);
     if (txChar.properties.writeWithoutResponse && txChar.writeValueWithoutResponse){
-      return txChar.writeValueWithoutResponse(data).catch(function(){
-        return txChar.writeValue(data);
-      });
+      return txChar.writeValueWithoutResponse(data).catch(function(){ return txChar.writeValue(data); });
     }
     return txChar.writeValue(data);
   }
 
-  // cmd: string. opts.force skips dedupe/throttle.
   function send(cmd, opts){
     opts = opts || {};
     if (!connected || !txChar) return Promise.resolve(false);
     if (cmd.charAt(cmd.length-1) !== ';') cmd += ';';
-
-    var now = Date.now();
-    if (!opts.force){
-      if (cmd === lastSentCmd && (now - lastSentAt) < 900) return Promise.resolve(true); // dedupe
-      if ((now - lastSentAt) < MIN_WRITE_GAP_MS && cmd === lastSentCmd) return Promise.resolve(true);
-    }
-
+    if (!opts.force && cmd === lastSentCmd && (Date.now() - lastSentAt) < 900) return Promise.resolve(true);
     return enqueue(function(){
       if (!connected || !txChar) return false;
       lastSentCmd = cmd; lastSentAt = Date.now();
       if (!opts.quiet) log('TX  ' + cmd, 'tx');
       return rawWrite(cmd).then(function(){ return true; }).catch(function(err){
-        log('TX FAILED ' + cmd + '  → ' + (err && err.message ? err.message : err), 'er');
+        log('TX FAILED ' + cmd + ' → ' + (err && err.message ? err.message : err), 'er');
         return false;
       });
     });
   }
 
   function onNotify(ev){
-    var v = ev.target.value;
-    var txt = '';
-    try { txt = new TextDecoder().decode(v); } catch(e){ txt = '<binary>'; }
+    var txt;
+    try { txt = new TextDecoder().decode(ev.target.value); } catch(e){ txt = '<binary>'; }
     var clean = txt.replace(/\s+$/,'');
     log('RX  ' + clean, 'rx');
 
-    // DeviceType reply looks like  "<letter>:<firmware>:<mac>;"
-    if (/^[A-Za-z]{1,3}:/.test(clean)){
+    var m = clean.match(/^([A-Za-z]{1,3}):([^:;]*):?([^;]*)/);
+    if (m && !/^(OK|ERR)$/i.test(m[1])){
       iType.textContent = clean.replace(/;+$/,'');
-      suggestModel(clean);
+      applyTypeCode(m[1].toUpperCase());
     } else if (/^\d{1,3};?$/.test(clean)){
       iBatt.textContent = clean.replace(/;+$/,'') + '%';
     }
   }
 
-  function suggestModel(reply){
-    // Purely a hint; the dropdown stays authoritative. Reported so we can map
-    // the letter → model table from real hardware instead of guessing.
-    log('note: DeviceType letter is "' + reply.split(':')[0] + '". If the wrong command is being sent, pick the model manually above.');
+  function applyTypeCode(code){
+    var hit = TYPE_MAP[code] || TYPE_MAP[code.charAt(0)];
+    if (!hit){
+      log('Unknown DeviceType code "' + code + '" — pick the command set manually in section 3.', 'er');
+      return;
+    }
+    modelEl.value = hit[1];
+    customWrap.hidden = true;
+    autoTag.textContent = '· auto: ' + hit[0];
+    log('Recognised as ' + hit[0] + ' → using the "' + hit[1] + '" command set.', 'hi');
   }
 
-  /* ============================================================
-     Connect / discover
-     ============================================================ */
   function collectOptionalServices(){
     var list = lovenseServiceList();
     var extra = extraUuidEl.value.trim().toLowerCase();
@@ -426,43 +579,44 @@
     return list;
   }
 
+  function buildRequestOptions(){
+    var optionalServices = collectOptionalServices();
+    var mode = filterModeEl.value;
+    if (mode === 'all')  return { acceptAllDevices:true, optionalServices:optionalServices };
+    if (mode === 'mfg')  return { filters:[{ manufacturerData:[{ companyIdentifier: LOVENSE_COMPANY_ID }] }], optionalServices:optionalServices };
+    if (mode === 'exact'){
+      var n = exactNameEl.value.trim();
+      if (!n) throw new Error('Fill in the exact advertised name first (or run the scanner).');
+      return { filters:[{ name:n }], optionalServices:optionalServices };
+    }
+    return { filters: NAME_PREFIXES.map(function(p){ return { namePrefix:p }; }), optionalServices:optionalServices };
+  }
+
   function connect(){
     if (connecting) return;
     if (!navigator.bluetooth){
-      setStatus('Web Bluetooth is not available in this browser.\nUse Chrome on Android, or Chrome/Edge on desktop. On iOS you need the Bluefy browser.', 'err');
+      setConn('Web Bluetooth is not available in this browser.\nUse Chrome on Android, or Chrome/Edge on desktop. On iOS you need the Bluefy browser.', 'err');
       return;
     }
-    connecting = true;
-    connectBtn.disabled = true;
-    setStatus('Opening device picker…', 'busy');
-
     var opts;
-    var optionalServices = collectOptionalServices();
-    if (showAllEl.checked){
-      opts = { acceptAllDevices:true, optionalServices:optionalServices };
-    } else {
-      opts = {
-        filters: NAME_PREFIXES.map(function(p){ return { namePrefix:p }; }),
-        optionalServices: optionalServices
-      };
-    }
+    try { opts = buildRequestOptions(); }
+    catch (e){ setConn(e.message, 'err'); return; }
+
+    connecting = true; connectBtn.disabled = true;
+    setConn('Opening device picker…', 'busy');
 
     navigator.bluetooth.requestDevice(opts)
       .then(function(d){
         device = d;
         iName.textContent = d.name || '(no name)';
-        log('Picked device: ' + (d.name || '(no name)') + '  id=' + d.id);
+        log('Picked: ' + (d.name || '(no name)') + '  id=' + d.id);
         d.addEventListener('gattserverdisconnected', onDisconnected);
-        setStatus('Connecting to GATT server…', 'busy');
+        setConn('Connecting to GATT server…', 'busy');
         return d.gatt.connect();
       })
-      .then(function(s){
-        server = s;
-        setStatus('Discovering services…', 'busy');
-        return s.getPrimaryServices();
-      })
+      .then(function(s){ server = s; setConn('Discovering services…', 'busy'); return s.getPrimaryServices(); })
       .then(function(services){
-        log('Found ' + services.length + ' accessible service(s).');
+        log('Accessible services: ' + services.length);
         services.forEach(function(sv){ log('  · ' + sv.uuid); });
         return pickServiceAndChars(services);
       })
@@ -472,54 +626,46 @@
           rxChar.addEventListener('characteristicvaluechanged', onNotify);
           log('Subscribed to notifications on ' + rxChar.uuid);
         }).catch(function(err){
-          log('Could not subscribe to notifications: ' + err.message + ' (control may still work)', 'er');
+          log('Notification subscribe failed: ' + err.message + ' (control may still work)', 'er');
         });
       })
       .then(function(){
         connected = true; connecting = false;
-        setStatus('Connected to ' + (device.name || 'device') + '.', 'ok');
+        setConn('Connected to ' + (device.name || 'device') + '.', 'ok');
         setControlsEnabled(true);
         requestWakeLock();
-        // Give the stack a beat before the first command — some models drop
-        // anything written immediately after the notification subscription.
-        return delay(350).then(function(){ return send('DeviceType;', {force:true}); })
-                         .then(function(){ return delay(250); })
-                         .then(function(){ return send('Battery;', {force:true}); });
+        return delay(350)
+          .then(function(){ return send('DeviceType;', {force:true}); })
+          .then(function(){ return delay(300); })
+          .then(function(){ return send('Battery;', {force:true}); });
       })
-      .catch(function(err){
-        connecting = false;
-        connectBtn.disabled = false;
-        handleConnectError(err);
-      });
+      .catch(function(err){ connecting = false; connectBtn.disabled = false; handleConnectError(err); });
   }
 
   function pickServiceAndChars(services){
-    // Prefer a Lovense-shaped service; otherwise take any service that has
-    // both a writable and a notifying characteristic.
-    var ordered = services.slice().sort(function(a,b){
-      var la = /300001-0023-4bd4-bbd5-a6920e4c5653$/.test(a.uuid) ? 0 : (a.uuid.indexOf('fff0') === 4 ? 1 : 2);
-      var lb = /300001-0023-4bd4-bbd5-a6920e4c5653$/.test(b.uuid) ? 0 : (b.uuid.indexOf('fff0') === 4 ? 1 : 2);
-      return la - lb;
-    });
-
+    var ordered = services.slice().sort(function(a,b){ return rank(a.uuid) - rank(b.uuid); });
+    function rank(u){
+      if (/300001-002[0-9a-f]-4bd4-bbd5-a6920e4c5653$/i.test(u)) return 0;
+      if (/^0000fff0-/i.test(u)) return 1;
+      if (/^6e400001-/i.test(u)) return 2;
+      return 3;
+    }
     var i = 0;
     function tryNext(){
       if (i >= ordered.length) return Promise.resolve(false);
       var sv = ordered[i++];
       return sv.getCharacteristics().then(function(chars){
-        var w = null, n = null;
+        var w=null, n=null;
         chars.forEach(function(c){
-          var p = c.properties;
-          if (!w && (p.writeWithoutResponse || p.write)) w = c;
-          if (!n && (p.notify || p.indicate)) n = c;
+          if (!w && (c.properties.writeWithoutResponse || c.properties.write)) w = c;
+          if (!n && (c.properties.notify || c.properties.indicate)) n = c;
         });
         if (w && n){
           service = sv; txChar = w; rxChar = n;
           iService.textContent = sv.uuid;
           iTx.textContent = w.uuid + (w.properties.writeWithoutResponse ? ' (no-rsp)' : ' (rsp)');
           iRx.textContent = n.uuid;
-          log('Using service ' + sv.uuid);
-          log('  TX ' + w.uuid + '   RX ' + n.uuid);
+          log('Using service ' + sv.uuid + '  TX ' + w.uuid + '  RX ' + n.uuid);
           return true;
         }
         return tryNext();
@@ -534,32 +680,31 @@
     log('Connect error: ' + name + ' ' + msg, 'er');
 
     if (name === 'NotFoundError' && /User cancelled|chooser/i.test(msg)){
-      setStatus('Picker cancelled. Nothing selected.', '');
-      return;
+      setConn('Picker cancelled.', ''); return;
     }
     if (name === 'NotFoundError'){
-      setStatus('No matching device found.\n• Force-quit the Lovense app, then short-press the toy so its LED blinks.\n• Tick "Show all BLE devices" and look for an LVS-… entry.\n• Make sure the toy is not paired in Android Bluetooth settings.', 'err');
+      setConn('No matching device.\n• Force-quit the Lovense app, then press the toy so its LED blinks.\n• If the toy was renamed in the app, the LVS- name is gone — use the Manufacturer-data filter, or run the scanner in section 1 and pick the real name.\n• Make sure it is not paired in Android Bluetooth settings.', 'err');
       return;
     }
     if (msg === 'NO_USABLE_SERVICE'){
-      setStatus('Connected, but no service with both write + notify was visible.\nWeb Bluetooth can only see services declared in advance. Read the toy\'s service UUID with nRF Connect and paste it into "Extra service UUID", then reconnect.', 'err');
-      cleanup();
-      return;
+      setConn('Connected, but no service exposing both write + notify was visible.\nWeb Bluetooth only reveals services declared in advance. Run the scanner (section 1) or nRF Connect to read the toy\'s service UUID, paste it into "Extra service UUID", and reconnect.', 'err');
+      cleanup(); return;
     }
     if (name === 'NetworkError'){
-      setStatus('GATT connection failed / dropped.\n• Toy may already be held by the Lovense app — force-quit it.\n• Toggle the toy off and on, then retry.\n• Move closer; low battery shortens range badly.', 'err');
-      cleanup();
-      return;
+      setConn('GATT connection failed or dropped.\n• The Lovense app may still hold the toy — force-quit it.\n• Power-cycle the toy and retry.\n• Move closer; a low battery shortens range badly.', 'err');
+      cleanup(); return;
     }
     if (name === 'SecurityError'){
-      setStatus('Blocked by the browser. The page must be served over https:// (GitHub Pages works). file:// will not.', 'err');
+      setConn('Blocked by the browser — the page must be served over https:// (GitHub Pages is fine).', 'err');
       return;
     }
-    setStatus('Connection failed: ' + name + ' ' + msg, 'err');
+    if (name === 'TypeError' && /manufacturerData/i.test(msg)){
+      setConn('This Chrome is too old for manufacturer-data filters. Switch the filter to "Name prefix" or "Show every BLE device".', 'err');
+      return;
+    }
+    setConn('Connection failed: ' + name + ' ' + msg, 'err');
     cleanup();
   }
-
-  function delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
   function onDisconnected(){
     log('GATT server disconnected.', 'er');
@@ -567,20 +712,18 @@
     connected = false;
     setControlsEnabled(false);
     if (wasRunning) stopGame(true);
-    setStatus('Disconnected.', 'err');
     releaseWakeLock();
     if (autoReconnectEl.checked && device){
-      setStatus('Disconnected — trying to reconnect…', 'busy');
+      setConn('Disconnected — trying to reconnect…', 'busy');
       reconnect(1);
+    } else {
+      setConn('Disconnected.', 'err');
     }
   }
 
   function reconnect(attempt){
     if (!device || connected) return;
-    if (attempt > 5){
-      setStatus('Reconnect gave up after 5 tries. Press "Scan & Connect".', 'err');
-      return;
-    }
+    if (attempt > 5){ setConn('Reconnect gave up after 5 tries. Press "Scan & Connect".', 'err'); return; }
     log('Reconnect attempt ' + attempt + '…');
     device.gatt.connect()
       .then(function(s){ server = s; return s.getPrimaryServices(); })
@@ -593,19 +736,16 @@
       })
       .then(function(){
         connected = true;
-        setStatus('Reconnected to ' + (device.name || 'device') + '.', 'ok');
+        setConn('Reconnected to ' + (device.name || 'device') + '.', 'ok');
         setControlsEnabled(true);
         requestWakeLock();
       })
-      .catch(function(){
-        setTimeout(function(){ reconnect(attempt + 1); }, 1200 * attempt);
-      });
+      .catch(function(){ setTimeout(function(){ reconnect(attempt+1); }, 1200 * attempt); });
   }
 
   function cleanup(){
     try { if (device && device.gatt && device.gatt.connected) device.gatt.disconnect(); } catch(e){}
-    server = null; service = null; txChar = null; rxChar = null;
-    connected = false;
+    server=null; service=null; txChar=null; rxChar=null; connected=false;
     setControlsEnabled(false);
   }
 
@@ -614,46 +754,38 @@
     stopGame(true);
     send('Vibrate:0;', {force:true, quiet:true});
     setTimeout(function(){
-      cleanup();
-      setStatus('Disconnected.', '');
-      log('Manually disconnected.');
-      releaseWakeLock();
+      cleanup(); setConn('Disconnected.', ''); log('Manually disconnected.'); releaseWakeLock();
     }, 200);
   }
 
   /* ============================================================
-     Wake lock — Android throttles timers and can drop BLE when
-     the screen sleeps.
+     Wake lock
      ============================================================ */
   function requestWakeLock(){
     if (!('wakeLock' in navigator)) return;
     navigator.wakeLock.request('screen').then(function(w){
-      wakeLock = w;
-      log('Screen wake lock acquired.');
+      wakeLock = w; log('Screen wake lock acquired.');
       w.addEventListener('release', function(){ wakeLock = null; });
     }).catch(function(){});
   }
-  function releaseWakeLock(){
-    if (wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
-  }
+  function releaseWakeLock(){ if (wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock=null; } }
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState === 'visible' && connected && !wakeLock) requestWakeLock();
   });
 
   /* ============================================================
-     Command layer — model → command strings
+     SECTION 3 — command layer
      ============================================================ */
-  function pctToLevel(pct){ return clamp(Math.round(pct / 100 * 20), 0, 20); }
+  function pctToLevel(p){ return clamp(Math.round(p/100*20), 0, 20); }
 
   function commandsFor(pct){
     var lv = pctToLevel(pct);
     switch (modelEl.value){
-      case 'dual':   return ['Vibrate1:' + lv + ';', 'Vibrate2:' + lv + ';'];
-      case 'thrust': return ['Thrusting:' + lv + ';'];
-      case 'custom':
-        var p = customPrefixEl.value.trim() || 'Vibrate:';
-        return [p + lv + ';'];
-      default:       return ['Vibrate:' + lv + ';'];
+      case 'dual':   return ['Vibrate1:'+lv+';', 'Vibrate2:'+lv+';'];
+      case 'rotate': return ['Vibrate:'+lv+';', 'Rotate:'+lv+';'];
+      case 'thrust': return ['Thrusting:'+lv+';'];
+      case 'custom': return [(customPrefixEl.value.trim() || 'Vibrate:') + lv + ';'];
+      default:       return ['Vibrate:'+lv+';'];
     }
   }
 
@@ -663,40 +795,29 @@
     var lv = pctToLevel(pct);
     if (!opts.force && lv === lastLevelSent) return Promise.resolve();
     lastLevelSent = lv;
-    var cmds = commandsFor(pct);
     var chain = Promise.resolve();
-    cmds.forEach(function(c){
+    commandsFor(pct).forEach(function(c){
       chain = chain.then(function(){ return send(c, { quiet: !!opts.quiet, force:true }); });
     });
     return chain;
   }
+  function stopToy(){ lastLevelSent = -1; return setPower(0, {force:true}); }
 
-  function stopToy(){
-    lastLevelSent = -1;
-    return setPower(0, { force:true });
-  }
-
-  /* ============================================================
-     UI enable / disable
-     ============================================================ */
   function setControlsEnabled(on){
     disconnectBtn.disabled = !on;
     connectBtn.disabled = on;
-    manualEl.disabled = !on;
-    mStop.disabled = !on;
-    qType.disabled = !on; qBatt.disabled = !on; qPower.disabled = !on;
+    manualEl.disabled = !on; mStop.disabled = !on;
+    qType.disabled=!on; qBatt.disabled=!on; qStatus.disabled=!on; qPower.disabled=!on;
     rawSend.disabled = !on;
     startBtn.disabled = !on || gameRunning;
     if (!on){ stopBtn.disabled = true; burstBtn.disabled = true; }
   }
 
   /* ============================================================
-     Game logic (ported from lovense_game.html)
+     SECTION 4 — game
      ============================================================ */
-  function currentBaseStrength(){
-    return Math.min(MAX_STRENGTH, START_STRENGTH + (level - 1) * STRENGTH_STEP);
-  }
-  function currentPattern(){ return PATTERNS[(level - 1) % PATTERNS.length]; }
+  function currentBaseStrength(){ return Math.min(MAX_STRENGTH, START_STRENGTH + (level-1)*STRENGTH_STEP); }
+  function currentPattern(){ return PATTERNS[(level-1) % PATTERNS.length]; }
 
   function updateDisplays(){
     levelDisplay.textContent = level;
@@ -707,60 +828,44 @@
   }
   function updateElapsed(){
     if (!gameStartTime) return;
-    var sec = Math.floor((Date.now() - gameStartTime) / 1000);
-    timeDisplay.textContent =
-      String(Math.floor(sec / 60)).padStart(2,'0') + ':' + String(sec % 60).padStart(2,'0');
+    var sec = Math.floor((Date.now() - gameStartTime)/1000);
+    timeDisplay.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
   }
-
   function patternTick(){
     if (!gameRunning || bursting || !connected) return;
-    var t = (Date.now() - patternStartTime) / 1000;
-    var pct = currentPattern().calc(t, currentBaseStrength());
-    setPower(pct, { quiet:true });
+    var t = (Date.now() - patternStartTime)/1000;
+    setPower(currentPattern().calc(t, currentBaseStrength()), { quiet:true });
   }
-
   function levelUp(){
-    level += 1;
-    patternStartTime = Date.now();
-    updateDisplays();
+    level += 1; patternStartTime = Date.now(); updateDisplays();
     log('Level ' + level + ' — ' + currentBaseStrength() + '%, pattern ' + currentPattern().name);
   }
-
   function beginEscalation(){
-    level = 1;
-    gameStartTime = Date.now();
-    patternStartTime = Date.now();
+    level = 1; gameStartTime = Date.now(); patternStartTime = Date.now();
     if (levelTimer) clearInterval(levelTimer);
     levelTimer = setInterval(levelUp, LEVEL_INTERVAL_MS);
-    updateDisplays();
-    updateElapsed();
+    updateDisplays(); updateElapsed();
   }
-
   function resetBurstCooldown(){
     if (burstCooldownInterval){ clearInterval(burstCooldownInterval); burstCooldownInterval = null; }
-    burstCooldownUntil = 0;
-    burstBtn.textContent = BURST_LABEL;
+    burstCooldownUntil = 0; burstBtn.textContent = BURST_LABEL;
   }
   function startBurstCooldownDisplay(){
     if (burstCooldownInterval) clearInterval(burstCooldownInterval);
-    burstBtn.textContent = '⚡ Cooling down ' + Math.max(Math.ceil((burstCooldownUntil - Date.now())/1000),0) + ' s';
+    burstBtn.textContent = '⚡ Cooling down ' + Math.max(Math.ceil((burstCooldownUntil-Date.now())/1000),0) + ' s';
     burstCooldownInterval = setInterval(function(){
-      var remain = Math.ceil((burstCooldownUntil - Date.now()) / 1000);
-      if (remain <= 0){
+      var r = Math.ceil((burstCooldownUntil - Date.now())/1000);
+      if (r <= 0){
         clearInterval(burstCooldownInterval); burstCooldownInterval = null;
         burstBtn.textContent = BURST_LABEL;
         burstBtn.disabled = !gameRunning || bursting;
-      } else {
-        burstBtn.textContent = '⚡ Cooling down ' + remain + ' s';
-      }
+      } else burstBtn.textContent = '⚡ Cooling down ' + r + ' s';
     }, 250);
   }
-
   function startGame(){
     if (!connected){ log('Not connected — cannot start.', 'er'); return; }
     gameRunning = true; bursting = false;
-    resetBurstCooldown();
-    beginEscalation();
+    resetBurstCooldown(); beginEscalation();
     startBtn.disabled = true; stopBtn.disabled = false; burstBtn.disabled = false;
     manualEl.disabled = true; modelEl.disabled = true;
     log('Game started — level 1, ' + currentBaseStrength() + '%, pattern ' + currentPattern().name);
@@ -768,80 +873,76 @@
     elapsedTimer = setInterval(updateElapsed, 250);
     patternTick();
   }
-
   function stopGame(silent){
     if (!gameRunning && silent) return;
     gameRunning = false; bursting = false;
-    if (levelTimer){ clearInterval(levelTimer); levelTimer = null; }
-    if (tickTimer){ clearInterval(tickTimer); tickTimer = null; }
-    if (elapsedTimer){ clearInterval(elapsedTimer); elapsedTimer = null; }
-    if (burstTimeout){ clearTimeout(burstTimeout); burstTimeout = null; }
+    if (levelTimer){ clearInterval(levelTimer); levelTimer=null; }
+    if (tickTimer){ clearInterval(tickTimer); tickTimer=null; }
+    if (elapsedTimer){ clearInterval(elapsedTimer); elapsedTimer=null; }
+    if (burstTimeout){ clearTimeout(burstTimeout); burstTimeout=null; }
     resetBurstCooldown();
-    startBtn.disabled = !connected;
-    stopBtn.disabled = true; burstBtn.disabled = true;
+    startBtn.disabled = !connected; stopBtn.disabled = true; burstBtn.disabled = true;
     manualEl.disabled = !connected; modelEl.disabled = false;
     manualEl.value = 0; manualVal.textContent = '0%'; manualLv.textContent = '0';
     stopToy();
     if (!silent) log('Game ended — toy stopped.');
   }
-
   function burst(){
     var now = Date.now();
     if (!gameRunning || bursting || now < burstCooldownUntil) return;
-    bursting = true;
-    burstBtn.disabled = true;
+    bursting = true; burstBtn.disabled = true;
     burstCooldownUntil = now + BURST_CD_MS;
     log('Burst — 2 s at ' + BURST_STRENGTH + '%, then reset to level 1.');
-    setPower(BURST_STRENGTH, { force:true });
+    setPower(BURST_STRENGTH, {force:true});
     burstTimeout = setTimeout(function(){
-      bursting = false;
-      beginEscalation();
+      bursting = false; beginEscalation();
       log('Burst over — reset to level 1 (' + currentBaseStrength() + '%, ' + currentPattern().name + ').');
-      patternTick();
-      startBurstCooldownDisplay();
+      patternTick(); startBurstCooldownDisplay();
     }, BURST_DURATION_SEC * 1000);
   }
 
   /* ============================================================
      Events
      ============================================================ */
+  scanBtn.addEventListener('click', startScan);
+  scanStopBtn.addEventListener('click', stopScan);
+  scanLovenseOnly.addEventListener('change', renderScan);
+
+  filterModeEl.addEventListener('change', function(){ exactWrap.hidden = filterModeEl.value !== 'exact'; });
   connectBtn.addEventListener('click', connect);
   disconnectBtn.addEventListener('click', manualDisconnect);
+
+  modelEl.addEventListener('change', function(){
+    customWrap.hidden = modelEl.value !== 'custom';
+    autoTag.textContent = '';
+  });
+  manualEl.addEventListener('input', function(){
+    var v = parseInt(manualEl.value, 10);
+    manualVal.textContent = v + '%'; manualLv.textContent = pctToLevel(v);
+    setPower(v);
+  });
+  mStop.addEventListener('click', function(){
+    manualEl.value = 0; manualVal.textContent='0%'; manualLv.textContent='0'; stopToy();
+  });
+  qType.addEventListener('click',  function(){ send('DeviceType;', {force:true}); });
+  qBatt.addEventListener('click',  function(){ send('Battery;',    {force:true}); });
+  qStatus.addEventListener('click',function(){ send('Status:1;',   {force:true}); });
+  qPower.addEventListener('click', function(){ send('PowerOff;',   {force:true}); });
+
+  rawSend.addEventListener('click', function(){
+    var c = rawCmd.value.trim(); if (!c) return; send(c, {force:true});
+  });
+  rawCmd.addEventListener('keydown', function(e){ if (e.key === 'Enter') rawSend.click(); });
+
   startBtn.addEventListener('click', startGame);
   stopBtn.addEventListener('click', function(){ stopGame(false); });
   burstBtn.addEventListener('click', burst);
 
-  modelEl.addEventListener('change', function(){
-    customWrap.hidden = modelEl.value !== 'custom';
-  });
-
-  manualEl.addEventListener('input', function(){
-    var v = parseInt(manualEl.value, 10);
-    manualVal.textContent = v + '%';
-    manualLv.textContent = pctToLevel(v);
-    setPower(v);
-  });
-  mStop.addEventListener('click', function(){
-    manualEl.value = 0; manualVal.textContent='0%'; manualLv.textContent='0';
-    stopToy();
-  });
-
-  qType.addEventListener('click', function(){ send('DeviceType;', {force:true}); });
-  qBatt.addEventListener('click', function(){ send('Battery;',  {force:true}); });
-  qPower.addEventListener('click', function(){ send('PowerOff;',{force:true}); });
-
-  rawSend.addEventListener('click', function(){
-    var c = rawCmd.value.trim();
-    if (!c) return;
-    send(c, {force:true});
-  });
-  rawCmd.addEventListener('keydown', function(e){ if (e.key === 'Enter') rawSend.click(); });
-
   $('clearLog').addEventListener('click', function(){ logEl.textContent = ''; });
   $('copyLog').addEventListener('click', function(){
-    navigator.clipboard.writeText(logEl.textContent).then(function(){
-      log('Log copied to clipboard.');
-    }).catch(function(){ log('Clipboard blocked — select the text manually.', 'er'); });
+    navigator.clipboard.writeText(logEl.textContent)
+      .then(function(){ log('Log copied.'); })
+      .catch(function(){ log('Clipboard blocked — select the text manually.', 'er'); });
   });
 
   window.addEventListener('beforeunload', function(){
@@ -852,16 +953,19 @@
      Boot
      ============================================================ */
   if (!navigator.bluetooth){
-    setStatus('Web Bluetooth is NOT available here.\nUse Chrome on Android, Chrome/Edge on desktop, or Bluefy on iOS. The page must be on https://', 'err');
-    connectBtn.disabled = true;
-  } else if (navigator.bluetooth.getAvailability){
-    navigator.bluetooth.getAvailability().then(function(av){
-      if (!av){
-        setStatus('Web Bluetooth API is present but no Bluetooth adapter is available.\nTurn Bluetooth on and reload.', 'err');
-      }
-    });
+    setConn('Web Bluetooth is NOT available here.\nUse Chrome on Android, Chrome/Edge on desktop, or Bluefy on iOS. The page must be on https://', 'err');
+    connectBtn.disabled = true; scanBtn.disabled = true;
+  } else {
+    if (!navigator.bluetooth.requestLEScan){
+      setScan('Live scanning is not enabled in this Chrome.\nEnable chrome://flags/#enable-experimental-web-platform-features and relaunch — or skip this and use the Manufacturer-data filter below.', 'busy');
+    }
+    if (navigator.bluetooth.getAvailability){
+      navigator.bluetooth.getAvailability().then(function(av){
+        if (!av) setConn('No Bluetooth adapter available. Turn Bluetooth on and reload.', 'err');
+      });
+    }
   }
-  log('Page loaded. Force-quit the Lovense app, wake the toy (LED blinking), then press "Scan & Connect".');
+  log('Ready. Force-quit the Lovense app, wake the toy (LED blinking), then scan or connect.');
 })();
 </script>
 </body>
