@@ -80,9 +80,22 @@
       <input type="range" id="second" min="0" max="100" value="100" style="width:100%;">
     </div>
 
+    <label for="customUuid">服務 UUID（進階，已預填你這支 Gush 的資料）</label>
+    <input type="text" id="customUuid" value="45440001-0023-4bd4-bbd5-a6920e4c5653"
+           placeholder="例如 45440001-0023-4bd4-bbd5-a6920e4c5653">
+
     <button id="connectBtn">選擇並連線玩具</button>
     <button id="disconnectBtn" style="display:none;">中斷連線</button>
-  </section>
+
+    <details>
+      <summary>連不上？怎麼找到服務 UUID</summary>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">
+        用 nRF Connect（Android 免費藍牙掃描 App）掃描，點開你的玩具（名稱會是
+        LVS- 開頭），往下捲找「Complete list of 128-bit Service UUIDs」，
+        把那一串（例如 45440001-0023-4bd4-bbd5-a6920e4c5653）貼進上面欄位，
+        再按「選擇並連線玩具」。
+      </div>
+    </details>
 
   <section>
     <h2>遊戲</h2>
@@ -125,18 +138,20 @@
   var $ = function(id){ return document.getElementById(id); };
 
   // ---------- Lovense BLE service UUID ----------
-  // 第三代 service 是 XY300001-002Z-4bd4-bbd5-a6920e4c5653，X/Y/Z 會隨型號與韌體改變。
-  // Web Bluetooth 不接受萬用字元，所以把所有組合都列進 optionalServices。
+  // 第三代 service 格式是 ????0001-00Y?-4bd4-bbd5-a6920e4c5653，
+  // 前 8 碼會隨型號變化，範圍太大猜不完。Web Bluetooth 又不接受萬用字元，
+  // 所以策略改成：已經實測過的型號直接列出來；沒列到的型號，
+  // 用下面「服務 UUID（進階）」欄位手動貼上（來源：用 nRF Connect 之類的
+  // 藍牙掃描 App 點開該裝置，找「Complete list of 128-bit Service UUIDs」）。
   function lovenseServices(){
     var list = [
       '0000fff0-0000-1000-8000-00805f9b34fb',
-      '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
+      '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
+      // 已經實測確認的機型（陸續補上）：
+      '45440001-0023-4bd4-bbd5-a6920e4c5653' // Gush（LVS-ED 開頭，單馬達，用 Vibrate:n; 即可）
     ];
-    var xs = ['4','5'], zs = ['3','4'], hex = '0123456789abcdef';
-    for (var i=0;i<xs.length;i++)
-      for (var j=0;j<hex.length;j++)
-        for (var k=0;k<zs.length;k++)
-          list.push(xs[i]+hex[j]+'300001-002'+zs[k]+'-4bd4-bbd5-a6920e4c5653');
+    var custom = (document.getElementById('customUuid').value || '').trim().toLowerCase();
+    if (custom && list.indexOf(custom) < 0) list.unshift(custom);
     return list;
   }
 
