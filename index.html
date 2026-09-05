@@ -149,6 +149,17 @@
       <button id="disconnectBtn" class="bad" disabled>Disconnect</button>
     </div>
     <button id="retryBtn" class="full mt" disabled>Reconnect (same device — no picker)</button>
+    <button id="advBtn" class="full mt" disabled>Is the toy advertising right now? (12 s check)</button>
+    <div class="row mt">
+      <div style="flex:0 0 auto;max-width:190px;">
+        <label>Connection attempts</label>
+        <select id="attempts">
+          <option value="3">3 (fast fail)</option>
+          <option value="6" selected>6</option>
+          <option value="12">12 (keep trying ~6 min)</option>
+        </select>
+      </div>
+    </div>
 
     <div class="check">
       <input type="checkbox" id="autoReconnect" checked>
@@ -369,7 +380,7 @@
      ============================================================ */
   var scanStatus=$('scanStatus'), scanBtn=$('scanBtn'), scanStopBtn=$('scanStopBtn'),
       scanLovenseOnly=$('scanLovenseOnly'), scanList=$('scanList');
-  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn'), retryBtn=$('retryBtn');
+  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn'), retryBtn=$('retryBtn'), advBtn=$('advBtn'), attemptsEl=$('attempts');
   var filterModeEl=$('filterMode'), exactWrap=$('exactWrap'), exactNameEl=$('exactName');
   var autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid');
   var iName=$('iName'), iService=$('iService'), iTx=$('iTx'), iRx=$('iRx'), iType=$('iType'), iBatt=$('iBatt');
@@ -634,14 +645,56 @@
   }
 
   // Android very often fails the FIRST gatt.connect() and succeeds on a retry.
+  // Timing matters for diagnosis: a fast failure = refused, ~30 s = timeout.
   function connectGatt(dev, tries){
-    return dev.gatt.connect().catch(function(err){
+    var t0 = Date.now();
+    return dev.gatt.connect().then(function(s){
+      log('gatt.connect() OK in ' + (Date.now()-t0) + ' ms');
+      return s;
+    }).catch(function(err){
+      var ms = Date.now() - t0;
+      log('gatt.connect() failed after ' + ms + ' ms — ' + err.name + ': ' + err.message, 'er');
+      if (ms > 20000){
+        log('  ↑ ~30 s = TIMEOUT. The toy never answered the connection request: it either stopped advertising, or it is advertising but refusing new centrals (usually because it is bonded/held elsewhere).', 'er');
+      } else if (ms < 3000){
+        log('  ↑ instant failure = the request was refused outright, not timed out.', 'er');
+      }
       if (tries > 1){
-        log('gatt.connect() failed (' + err.name + ') — retry in 800 ms, ' + (tries-1) + ' left', 'er');
+        log('Retrying, ' + (tries-1) + ' left. Press the toy\'s button NOW so it advertises.', 'er');
         try { dev.gatt.disconnect(); } catch(e){}
-        return delay(800).then(function(){ return connectGatt(dev, tries - 1); });
+        return delay(1500).then(function(){ return connectGatt(dev, tries - 1); });
       }
       throw err;
+    });
+  }
+
+  // Is the toy actually broadcasting right now? Decides "toy problem" vs "browser problem".
+  function checkAdvertising(){
+    if (!device){ setConn('Pick a device first (Scan & Connect), then run this check.', 'err'); return; }
+    if (!device.watchAdvertisements){
+      setConn('This browser has no watchAdvertisements() — cannot run the liveness check here.\nUse nRF Connect instead: if nRF can CONNECT (not just see) the toy, the toy is fine and the browser is the problem.', 'err');
+      log('watchAdvertisements() unsupported.', 'er');
+      return;
+    }
+    var got = 0, ac = new AbortController();
+    function onAdv(ev){ got++; log('ADV ' + (ev.device.name || '?') + '  rssi=' + ev.rssi, 'hi'); }
+    device.addEventListener('advertisementreceived', onAdv);
+    device.watchAdvertisements({ signal: ac.signal }).then(function(){
+      setConn('Listening for advertisements from ' + (device.name||'the toy') + ' for 12 s…', 'busy');
+      log('Liveness check started.');
+      setTimeout(function(){
+        try { ac.abort(); } catch(e){}
+        device.removeEventListener('advertisementreceived', onAdv);
+        if (got){
+          setConn('Heard ' + got + ' advertisement(s) — the toy IS broadcasting and in range.\nSo the failure is in the CONNECT step: it is refusing new centrals. Power-cycle the toy (hold the button until it switches off, then on) and press Reconnect within ~10 s.', 'ok');
+        } else {
+          setConn('Silence for 12 s — the toy is NOT advertising.\nIt is asleep, flat, or another app is holding it. Press its button until the LED blinks, then retry.', 'err');
+        }
+      }, 12000);
+    }).catch(function(e){
+      device.removeEventListener('advertisementreceived', onAdv);
+      log('watchAdvertisements failed: ' + e.name + ' ' + e.message, 'er');
+      setConn('Liveness check unavailable: ' + e.name + ' — ' + e.message, 'err');
     });
   }
 
@@ -665,11 +718,12 @@
         device = d;
         iName.textContent = d.name || '(no name)';
         log('Picked: ' + (d.name || '(no name)') + '  id=' + d.id);
+        advBtn.disabled = false; retryBtn.disabled = false;
         d.removeEventListener('gattserverdisconnected', onDisconnected);
         d.addEventListener('gattserverdisconnected', onDisconnected);
         failStep = 'gatt.connect';
-        setConn('Connecting to GATT server (up to 3 attempts)…', 'busy');
-        return connectGatt(d, 3);
+        setConn('Connecting to GATT server (up to ' + (parseInt(attemptsEl.value,10)||6) + ' attempts)…\nEach failed attempt takes ~30 s. Keep pressing the toy\'s button so it stays awake.', 'busy');
+        return connectGatt(d, parseInt(attemptsEl.value,10) || 6);
       })
       .then(function(s){
         server = s;
@@ -728,7 +782,7 @@
     connecting = true; retryBtn.disabled = true; connectBtn.disabled = true;
     failStep = 'gatt.connect';
     setConn('Reconnecting to ' + (device.name || 'device') + '…', 'busy');
-    connectGatt(device, 4)
+    connectGatt(device, parseInt(attemptsEl.value,10) || 6)
       .then(function(s){ server = s; return delay(600); })
       .then(function(){ return server.getPrimaryServices().catch(function(){ return []; }); })
       .then(function(services){
@@ -928,6 +982,7 @@
     disconnectBtn.disabled = !on;
     connectBtn.disabled = on;
     retryBtn.disabled = on || !device;
+    advBtn.disabled = !device;
     manualEl.disabled = !on; mStop.disabled = !on;
     qType.disabled=!on; qBatt.disabled=!on; qStatus.disabled=!on; qPower.disabled=!on;
     rawSend.disabled = !on;
@@ -1034,6 +1089,7 @@
   connectBtn.addEventListener('click', connect);
   disconnectBtn.addEventListener('click', manualDisconnect);
   retryBtn.addEventListener('click', retrySameDevice);
+  advBtn.addEventListener('click', checkAdvertising);
 
   modelEl.addEventListener('change', function(){
     customWrap.hidden = modelEl.value !== 'custom';
@@ -1088,6 +1144,10 @@
       });
     }
   }
+  log('UA: ' + navigator.userAgent);
+  log('Web Bluetooth: requestDevice=' + !!(navigator.bluetooth && navigator.bluetooth.requestDevice) +
+      '  requestLEScan=' + !!(navigator.bluetooth && navigator.bluetooth.requestLEScan) +
+      '  getDevices=' + !!(navigator.bluetooth && navigator.bluetooth.getDevices));
   log('Ready. Force-quit the Lovense app, wake the toy (LED blinking), then scan or connect.');
 })();
 </script>
