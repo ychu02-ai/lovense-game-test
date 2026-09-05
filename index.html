@@ -1,134 +1,250 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Lovense 直連遊戲（Web Bluetooth）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Lovense BLE Direct — Game &amp; Protocol Console</title>
 <style>
   :root{
     color-scheme: dark;
-    --bg:#14141c; --panel:#1e1e2a; --panel2:#252534; --border:#33334a;
-    --text:#e8e8f0; --muted:#9494ac; --accent:#ff4d8d; --accent2:#7c5cff;
-    --ok:#3ddc97; --danger:#ff5c5c;
+    --bg:#14141c;
+    --panel:#1e1e2a;
+    --panel2:#252534;
+    --border:#33334a;
+    --text:#e8e8f0;
+    --muted:#9494ac;
+    --accent:#ff4d8d;
+    --accent2:#7c5cff;
+    --ok:#3ddc97;
+    --warn:#ffb648;
+    --danger:#ff5c5c;
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:linear-gradient(160deg,#14141c,#1a1626);color:var(--text);
+  body{
+    margin:0;
+    background:linear-gradient(160deg,#14141c,#1a1626);
+    color:var(--text);
     font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
-    min-height:100vh;display:flex;justify-content:center;padding:28px 16px;}
-  .container{width:100%;max-width:560px;}
-  h1{font-size:21px;margin:0 0 4px;}
-  .subtitle{color:var(--muted);font-size:13px;margin:0 0 22px;line-height:1.6;}
-  section{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
-  section h2{font-size:14px;margin:0 0 12px;color:var(--muted);font-weight:600;}
-  #status{font-size:14px;padding:10px 12px;border-radius:10px;background:var(--panel2);
-    border:1px solid var(--border);white-space:pre-wrap;word-break:break-word;}
-  #status.ok{color:var(--ok);border-color:var(--ok);}
-  #status.err{color:var(--danger);border-color:var(--danger);}
-  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 4px;}
-  select,input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--border);
-    color:var(--text);padding:10px;border-radius:10px;font-size:14px;font-family:inherit;outline:none;}
-  select:focus,input:focus{border-color:var(--accent2);}
-  button{border:none;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;
-    cursor:pointer;color:#fff;font-family:inherit;transition:filter .15s;}
-  button:active{transform:scale(.98);}
-  button:disabled{opacity:.35;cursor:not-allowed;}
-  #connectBtn{background:var(--accent2);width:100%;margin-top:12px;}
-  #disconnectBtn{background:transparent;border:1px solid var(--danger);color:var(--danger);width:100%;margin-top:10px;}
-  #startBtn{background:var(--ok);color:#0a1a12;}
-  #stopBtn{background:var(--danger);}
-  #burstBtn{background:var(--accent);width:100%;padding:18px;font-size:16px;margin-top:10px;}
-  .buttons{display:flex;gap:10px;}
-  .buttons>button{flex:1;}
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;}
-  .stat .k{font-size:11px;color:var(--muted);margin-bottom:4px;}
-  .stat .v{font-size:18px;font-weight:700;}
-  #barWrap{background:var(--panel2);border:1px solid var(--border);border-radius:999px;height:14px;overflow:hidden;margin-bottom:14px;}
-  #bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent2),var(--accent));transition:width .18s linear;}
-  #log{background:#0e0e15;border:1px solid var(--border);border-radius:10px;padding:10px 12px;
-    height:160px;overflow-y:auto;font-family:ui-monospace,Menlo,Consolas,monospace;
-    font-size:11.5px;color:#9adfc0;white-space:pre-wrap;word-break:break-all;}
-  .hint{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6;}
-  .rawrow{display:flex;gap:8px;}
-  .rawrow input{flex:1;}
-  .rawrow button{background:var(--accent2);}
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:24px 14px 60px;
+  }
+  .container{ width:100%; max-width:580px; }
+  h1{ font-size:20px; margin:0 0 4px; letter-spacing:.3px; }
+  .subtitle{ color:var(--muted); font-size:13px; margin:0 0 20px; line-height:1.5; }
+  section{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  section h2{
+    font-size:13px; margin:0 0 12px; color:var(--muted);
+    font-weight:600; letter-spacing:.6px; text-transform:uppercase;
+  }
+  #connStatus{
+    font-size:13px; padding:10px 12px; border-radius:10px;
+    background:var(--panel2); margin-bottom:12px;
+    border:1px solid var(--border); white-space:pre-wrap; word-break:break-word;
+    line-height:1.5;
+  }
+  #connStatus.ok{ color:var(--ok); border-color:#2c6a52; }
+  #connStatus.err{ color:var(--danger); border-color:#6a2c2c; }
+  #connStatus.busy{ color:var(--warn); border-color:#6a5227; }
+  label{ display:block; font-size:12px; color:var(--muted); margin:0 0 5px; }
+  .row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .row > div{ flex:1 1 140px; }
+  input[type=text], input[type=number], select{
+    width:100%; background:var(--panel2); border:1px solid var(--border);
+    color:var(--text); padding:9px 10px; border-radius:10px;
+    font-size:14px; outline:none; font-family:inherit;
+  }
+  input:focus, select:focus{ border-color:var(--accent2); }
+  input::placeholder{ color:#6a6a82; }
+  input[type=range]{ width:100%; accent-color:var(--accent); }
+  .check{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); }
+  .check input{ width:auto; }
+  .check label{ margin:0; }
+  button{
+    border:none; border-radius:10px; padding:10px 14px;
+    font-size:14px; font-weight:600; cursor:pointer; color:#fff;
+    transition:opacity .15s, transform .05s, filter .15s; font-family:inherit;
+    background:var(--panel2); border:1px solid var(--border);
+  }
+  button:active{ transform:scale(.97); }
+  button:disabled{ opacity:.35; cursor:not-allowed; }
+  .primary{ background:var(--accent2); border-color:transparent; }
+  .good{ background:var(--ok); color:#0a1a12; border-color:transparent; }
+  .bad{ background:var(--danger); border-color:transparent; }
+  .full{ width:100%; }
+  .mt{ margin-top:10px; }
+  .buttons{ display:flex; gap:8px; }
+  .buttons > button{ flex:1; }
+  .chipRow{ display:flex; gap:8px; flex-wrap:wrap; }
+  .chipRow button{ flex:1 1 auto; font-size:12px; padding:8px 10px; font-weight:500; }
+  #burstBtn{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    border-color:transparent; width:100%; padding:17px; font-size:16px; margin-top:10px;
+  }
+  .stats{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .stat{ background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:9px 11px; }
+  .stat .label{ font-size:11px; color:var(--muted); margin-bottom:3px; }
+  .stat .value{ font-size:17px; font-weight:700; }
+  #strengthBarWrap{
+    background:var(--panel2); border:1px solid var(--border);
+    border-radius:999px; height:14px; overflow:hidden; margin-bottom:12px;
+  }
+  #strengthBar{
+    height:100%; width:0%;
+    background:linear-gradient(90deg,var(--accent2),var(--accent));
+    transition:width .2s linear;
+  }
+  .kv{ font-size:12px; color:var(--muted); line-height:1.7; word-break:break-all; }
+  .kv b{ color:var(--text); font-weight:600; }
+  #log{
+    background:#0e0e15; border:1px solid var(--border); border-radius:10px;
+    padding:10px 12px; height:190px; overflow-y:auto;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:11.5px; color:#9adfc0; white-space:pre-wrap; word-break:break-all;
+  }
+  #log .tx{ color:#8fb8ff; }
+  #log .rx{ color:#ffd48f; }
+  #log .er{ color:#ff8f8f; }
+  .hint{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.65; }
+  details summary{ cursor:pointer; color:var(--muted); font-size:12px; margin-top:10px; }
+  details .body{ font-size:12px; color:var(--muted); margin-top:8px; line-height:1.7; }
+  details .body ol{ padding-left:18px; margin:6px 0; }
+  details .body li{ margin-bottom:5px; }
+  code{ background:var(--panel2); padding:1px 5px; border-radius:5px; font-size:11.5px; }
+  .divider{ height:1px; background:var(--border); margin:14px 0; }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Lovense 直連遊戲</h1>
-  <p class="subtitle">
-    直接用瀏覽器的藍牙連上玩具，不需要 Lovense App。
-    需要 Android 版 Chrome / Edge（iOS 請用 Bluefy 瀏覽器）。連線前請先在 Lovense App 中斷開玩具。
-  </p>
+  <h1>Lovense BLE Direct</h1>
+  <p class="subtitle">Connects straight to the toy over Web Bluetooth — no Lovense app, no LAN Game Mode.<br>Requires <b>Chrome on Android</b> (or desktop Chrome/Edge) over <b>HTTPS</b>.</p>
 
+  <!-- ========== CONNECTION ========== -->
   <section>
-    <h2>連線</h2>
-    <div id="status">尚未連線</div>
+    <h2>1 · Connection</h2>
+    <div id="connStatus">Not connected.</div>
 
-    <label for="profile">指令格式</label>
-    <select id="profile">
-      <option value="single">單馬達震動 — Vibrate:n;（Gush 等）</option>
-      <option value="dual">雙馬達震動 — Vibrate1:n; + Vibrate2:n;（Edge 2）</option>
-      <option value="mply2">雙馬達（Mply）— Mply:a:b;</option>
-      <option value="stroker">抽插：速度 + 深度 — Mply:速度:深度;（Solace / Solace Pro）</option>
-      <option value="strokerSimple">抽插：只控速度 — Vibrate:n;</option>
-    </select>
-
-    <div id="secondWrap" style="display:none;">
-      <label id="secondLabel" for="second">第二軸強度：100%</label>
-      <input type="range" id="second" min="0" max="100" value="100" style="width:100%;">
+    <div class="buttons">
+      <button id="connectBtn" class="primary">Scan &amp; Connect</button>
+      <button id="disconnectBtn" class="bad" disabled>Disconnect</button>
     </div>
 
-    <label for="customUuid">服務 UUID（進階，已預填你這支 Gush 的資料）</label>
-    <input type="text" id="customUuid" value="45440001-0023-4bd4-bbd5-a6920e4c5653"
-           placeholder="例如 45440001-0023-4bd4-bbd5-a6920e4c5653">
+    <div class="check">
+      <input type="checkbox" id="showAll">
+      <label for="showAll">Show <b>all</b> BLE devices in the picker (use if your toy doesn't appear)</label>
+    </div>
+    <div class="check">
+      <input type="checkbox" id="autoReconnect" checked>
+      <label for="autoReconnect">Auto-reconnect if the link drops</label>
+    </div>
 
-    <button id="connectBtn">選擇並連線玩具</button>
-    <button id="disconnectBtn" style="display:none;">中斷連線</button>
+    <div class="mt">
+      <label>Extra service UUID (optional — only if auto-discovery fails)</label>
+      <input type="text" id="extraUuid" placeholder="e.g. 4f300001-0023-4bd4-bbd5-a6920e4c5653">
+    </div>
+
+    <div class="divider"></div>
+    <div class="kv" id="devInfo">
+      <div>Device: <b id="iName">—</b></div>
+      <div>Service: <b id="iService">—</b></div>
+      <div>TX (write): <b id="iTx">—</b></div>
+      <div>RX (notify): <b id="iRx">—</b></div>
+      <div>DeviceType: <b id="iType">—</b></div>
+      <div>Battery: <b id="iBatt">—</b></div>
+    </div>
 
     <details>
-      <summary>連不上？怎麼找到服務 UUID</summary>
-      <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">
-        用 nRF Connect（Android 免費藍牙掃描 App）掃描，點開你的玩具（名稱會是
-        LVS- 開頭），往下捲找「Complete list of 128-bit Service UUIDs」，
-        把那一串（例如 45440001-0023-4bd4-bbd5-a6920e4c5653）貼進上面欄位，
-        再按「選擇並連線玩具」。
+      <summary>Toy won't show up / won't connect — checklist</summary>
+      <div class="body">
+        <ol>
+          <li><b>Force-quit the Lovense app</b> (and Lovense Remote / Connect on any nearby phone or PC). While the app holds the toy, it stops advertising and Chrome cannot see it.</li>
+          <li><b>Do NOT pair it in Android Bluetooth settings.</b> Lovense toys are BLE-only; a system pairing entry can block Chrome. If one exists, "Forget" it.</li>
+          <li><b>Wake the toy.</b> Short-press the button once — the LED should be <b>blinking</b> (advertising). Solid / off = asleep or already connected to something.</li>
+          <li>Android: Bluetooth <b>and</b> Location services must be ON, and Chrome needs the "Nearby devices" permission (Android 12+) or "Location" (Android 11−).</li>
+          <li>The page must be served over <b>https://</b> (GitHub Pages is fine). <code>file://</code> will not work.</li>
+          <li>Toy must be charged above ~20%; low battery kills BLE range first.</li>
+          <li>If the picker is empty, tick "Show all BLE devices" — Lovense names vary (<code>LVS-…</code>, <code>LOVE-…</code>, or the bare model name).</li>
+          <li>If it connects but "no usable service" appears, install <b>nRF Connect</b>, read the toy's service UUID, and paste it into "Extra service UUID" above.</li>
+        </ol>
       </div>
     </details>
+  </section>
 
+  <!-- ========== TOY / PROTOCOL ========== -->
   <section>
-    <h2>遊戲</h2>
+    <h2>2 · Toy &amp; protocol</h2>
+    <div class="row">
+      <div>
+        <label>Toy model (decides which command is sent)</label>
+        <select id="model">
+          <option value="single">Gush / Gush 2 — single vibrator (Vibrate:n)</option>
+          <option value="dual">Edge 2 — dual vibrator (Vibrate1/Vibrate2)</option>
+          <option value="thrust">Solace Pro — thruster (Thrusting:n)</option>
+          <option value="custom">Custom prefix…</option>
+        </select>
+      </div>
+    </div>
+    <div class="mt" id="customWrap" hidden>
+      <label>Custom command prefix (level 0–20 is appended, then <code>;</code>)</label>
+      <input type="text" id="customPrefix" placeholder="Vibrate:">
+    </div>
+
+    <div class="divider"></div>
+
+    <label>Manual power — <span id="manualVal">0%</span> (level <span id="manualLv">0</span>/20)</label>
+    <input type="range" id="manual" min="0" max="100" value="0" step="5" disabled>
+    <div class="chipRow mt">
+      <button id="mStop" disabled>Stop (0)</button>
+      <button id="qType" disabled>DeviceType;</button>
+      <button id="qBatt" disabled>Battery;</button>
+      <button id="qPower" disabled>PowerOff;</button>
+    </div>
+
+    <div class="mt">
+      <label>Raw command console (sent verbatim; <code>;</code> added if missing)</label>
+      <div class="row">
+        <div style="flex:3 1 180px;"><input type="text" id="rawCmd" placeholder="Vibrate:10;"></div>
+        <div style="flex:0 0 84px;"><button id="rawSend" class="primary full" disabled>Send</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== GAME ========== -->
+  <section>
+    <h2>3 · Game</h2>
     <div class="stats">
-      <div class="stat"><div class="k">階段</div><div class="v" id="lv">—</div></div>
-      <div class="stat"><div class="k">基礎強度</div><div class="v" id="st">—</div></div>
-      <div class="stat"><div class="k">變化方式</div><div class="v" id="pt">—</div></div>
-      <div class="stat"><div class="k">已進行</div><div class="v" id="tm">00:00</div></div>
+      <div class="stat"><div class="label">Level</div><div class="value" id="levelDisplay">—</div></div>
+      <div class="stat"><div class="label">Base strength</div><div class="value" id="strengthDisplay">—</div></div>
+      <div class="stat"><div class="label">Pattern</div><div class="value" id="patternDisplay">—</div></div>
+      <div class="stat"><div class="label">Elapsed</div><div class="value" id="timeDisplay">00:00</div></div>
     </div>
-    <div id="barWrap"><div id="bar"></div></div>
+    <div id="strengthBarWrap"><div id="strengthBar"></div></div>
     <div class="buttons">
-      <button id="startBtn" disabled>開始遊戲</button>
-      <button id="stopBtn" disabled>結束遊戲</button>
+      <button id="startBtn" class="good" disabled>Start game</button>
+      <button id="stopBtn" class="bad" disabled>End game</button>
     </div>
-    <button id="burstBtn" disabled>爆發：2 秒 10% 強度</button>
+    <button id="burstBtn" disabled>⚡ Burst — 2 s at 10%</button>
     <p class="hint">
-      開始後從 10% 起跳，每 5 秒換一種變化方式並加 10%，到 100% 後維持滿檔繼續換。
-      按爆發會降到 10% 兩秒，然後整個從第 1 階重來；爆發每 20 秒才能按一次。
+      Starts at 10%. Every 5 s the pattern switches and strength rises by 10% (caps at 100%, patterns keep cycling).
+      <b>Burst</b> drops to a flat 10% for 2 s, then resets you to level 1 — same as restarting. Burst has a 20 s cooldown.
     </p>
   </section>
 
+  <!-- ========== LOG ========== -->
   <section>
-    <h2>進階</h2>
-    <div class="rawrow">
-      <input type="text" id="raw" value="DeviceType;" placeholder="例如 Vibrate:10;">
-      <button id="sendRaw" disabled>送出</button>
-    </div>
-    <p class="hint">常用：DeviceType; · Battery; · Vibrate:10; · Vibrate1:10; · Mply:10:5; · PowerOff;</p>
-  </section>
-
-  <section>
-    <h2>紀錄</h2>
+    <h2>4 · BLE log</h2>
     <div id="log"></div>
+    <div class="chipRow mt">
+      <button id="clearLog">Clear</button>
+      <button id="copyLog">Copy log</button>
+    </div>
   </section>
 </div>
 
@@ -137,314 +253,615 @@
   'use strict';
   var $ = function(id){ return document.getElementById(id); };
 
-  // ---------- Lovense BLE service UUID ----------
-  // 第三代 service 格式是 ????0001-00Y?-4bd4-bbd5-a6920e4c5653，
-  // 前 8 碼會隨型號變化，範圍太大猜不完。Web Bluetooth 又不接受萬用字元，
-  // 所以策略改成：已經實測過的型號直接列出來；沒列到的型號，
-  // 用下面「服務 UUID（進階）」欄位手動貼上（來源：用 nRF Connect 之類的
-  // 藍牙掃描 App 點開該裝置，找「Complete list of 128-bit Service UUIDs」）。
-  function lovenseServices(){
-    var list = [
-      '0000fff0-0000-1000-8000-00805f9b34fb',
-      '6e400001-b5a3-f393-e0a9-e50e24dcca9e',
-      // 已經實測確認的機型（陸續補上）：
-      '45440001-0023-4bd4-bbd5-a6920e4c5653' // Gush（LVS-ED 開頭，單馬達，用 Vibrate:n; 即可）
-    ];
-    var custom = (document.getElementById('customUuid').value || '').trim().toLowerCase();
-    if (custom && list.indexOf(custom) < 0) list.unshift(custom);
+  /* ============================================================
+     BLE constants
+     ============================================================ */
+
+  // Lovense's modern GATT services all look like XX300001-0023-4bd4-bbd5-a6920e4c5653
+  // where XX is a per-model byte. Web Bluetooth only lets us *see* services we
+  // declared up front, so we declare the whole plausible range plus the legacy ones.
+  function lovenseServiceList(){
+    var list = [];
+    for (var b = 0x30; b <= 0x7f; b++){
+      var hx = b.toString(16);
+      if (hx.length < 2) hx = '0' + hx;
+      list.push(hx + '300001-0023-4bd4-bbd5-a6920e4c5653');
+    }
+    list.push('0000fff0-0000-1000-8000-00805f9b34fb');   // legacy Lovense (Max/Nora/Lush 1)
+    list.push('0000ffe0-0000-1000-8000-00805f9b34fb');   // seen on some units
+    list.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');   // Nordic UART
+    list.push('0000180a-0000-1000-8000-00805f9b34fb');   // Device Information
+    list.push('0000180f-0000-1000-8000-00805f9b34fb');   // Battery Service
     return list;
   }
 
-  var device=null, txChar=null, rxChar=null, rxBuffer='', pending=[];
+  var NAME_PREFIXES = ['LVS','LOVE','Lovense','LVS-','Gush','Edge','Solace','Hush','Lush','Domi','Nora','Max','Ferri','Ambi','Osci','Hyphy','Tenera','Ridge','Flexer','Gravity','Vulse','Mission','Gemini','Lapis'];
 
-  function log(msg){
-    var t = new Date().toLocaleTimeString('zh-TW',{hour12:false});
-    $('log').textContent += '['+t+'] '+msg+'\n';
-    $('log').scrollTop = $('log').scrollHeight;
+  /* ============================================================
+     State
+     ============================================================ */
+  var device = null, server = null, service = null, txChar = null, rxChar = null;
+  var connected = false, connecting = false;
+  var lastSentCmd = '', lastSentAt = 0;
+  var MIN_WRITE_GAP_MS = 90;
+
+  var gameRunning = false, bursting = false;
+  var level = 1, gameStartTime = null, patternStartTime = null;
+  var levelTimer = null, tickTimer = null, elapsedTimer = null;
+  var burstTimeout = null, burstCooldownUntil = 0, burstCooldownInterval = null;
+  var wakeLock = null;
+
+  /* ============================================================
+     Game tuning (ported 1:1 from lovense_game.html)
+     ============================================================ */
+  var LEVEL_INTERVAL_MS = 5000;
+  var PATTERN_TICK_MS   = 250;
+  var BURST_DURATION_SEC= 2;
+  var BURST_STRENGTH    = 10;
+  var BURST_CD_MS       = 20000;
+  var BURST_LABEL       = '⚡ Burst — 2 s at 10%';
+  var START_STRENGTH    = 10;
+  var STRENGTH_STEP     = 10;
+  var MAX_STRENGTH      = 100;
+
+  function clamp(v,min,max){ return Math.min(max, Math.max(min, v)); }
+  function pseudoRandom(seed){
+    var x = Math.sin(seed * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  var PATTERNS = [
+    { name:'Steady', calc:function(t,base){ return base; } },
+    { name:'Pulse',  calc:function(t,base){ var c=t%1.0; return c<0.6 ? base : base*0.3; } },
+    { name:'Wave',   calc:function(t,base){ var w=Math.sin(2*Math.PI*t/2.0); return clamp(base*0.7+base*0.3*w,0,100); } },
+    { name:'Spike',  calc:function(t,base){ var c=t%1.5; return c<0.2 ? 100 : base*0.5; } },
+    { name:'Random', calc:function(t,base){ var r=pseudoRandom(Math.floor(t/0.4)); return clamp(base+(r-0.5)*30,0,100); } }
+  ];
+
+  /* ============================================================
+     DOM
+     ============================================================ */
+  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn');
+  var showAllEl=$('showAll'), autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid');
+  var iName=$('iName'), iService=$('iService'), iTx=$('iTx'), iRx=$('iRx'), iType=$('iType'), iBatt=$('iBatt');
+  var modelEl=$('model'), customWrap=$('customWrap'), customPrefixEl=$('customPrefix');
+  var manualEl=$('manual'), manualVal=$('manualVal'), manualLv=$('manualLv'), mStop=$('mStop');
+  var qType=$('qType'), qBatt=$('qBatt'), qPower=$('qPower');
+  var rawCmd=$('rawCmd'), rawSend=$('rawSend');
+  var levelDisplay=$('levelDisplay'), strengthDisplay=$('strengthDisplay');
+  var patternDisplay=$('patternDisplay'), timeDisplay=$('timeDisplay'), strengthBar=$('strengthBar');
+  var startBtn=$('startBtn'), stopBtn=$('stopBtn'), burstBtn=$('burstBtn');
+  var logEl=$('log');
+
+  /* ============================================================
+     Logging
+     ============================================================ */
+  function log(msg, cls){
+    var t = new Date().toLocaleTimeString('en-GB',{hour12:false});
+    var span = document.createElement('span');
+    if (cls) span.className = cls;
+    span.textContent = '[' + t + '] ' + msg + '\n';
+    logEl.appendChild(span);
+    logEl.scrollTop = logEl.scrollHeight;
   }
   function setStatus(text, kind){
-    $('status').textContent = text;
-    $('status').className = kind || '';
+    connStatusEl.textContent = text;
+    connStatusEl.className = kind || '';
   }
 
-  function onRx(event){
-    var v = event.target.value, s='';
-    for (var i=0;i<v.byteLength;i++) s += String.fromCharCode(v.getUint8(i));
-    rxBuffer += s;
-    var idx;
-    while ((idx = rxBuffer.indexOf(';')) >= 0){
-      var msg = rxBuffer.slice(0, idx).trim();
-      rxBuffer = rxBuffer.slice(idx+1);
-      if (msg){
-        log('← '+msg+';');
-        var p = pending.shift();
-        if (p) p(msg);
-      }
-    }
+  /* ============================================================
+     Write queue — GATT allows exactly ONE operation at a time.
+     Overlapping writes are THE most common cause of Lovense
+     Web Bluetooth failures ("GATT operation already in progress").
+     ============================================================ */
+  var queue = Promise.resolve();
+  function enqueue(fn){
+    queue = queue.then(fn, fn);
+    return queue;
   }
 
-  async function connect(){
-    if (!navigator.bluetooth){
-      setStatus('這個瀏覽器不支援 Web Bluetooth。Android 請用 Chrome，iOS 請用 Bluefy。','err');
-      return;
-    }
-    try{
-      setStatus('請在跳出的清單中選擇你的玩具…');
-      device = await navigator.bluetooth.requestDevice({
-        filters: [{namePrefix:'LVS-'},{namePrefix:'LOVE-'}],
-        optionalServices: lovenseServices()
+  function rawWrite(str){
+    if (!txChar) return Promise.reject(new Error('No TX characteristic'));
+    var data = new TextEncoder().encode(str);
+    if (txChar.properties.writeWithoutResponse && txChar.writeValueWithoutResponse){
+      return txChar.writeValueWithoutResponse(data).catch(function(){
+        return txChar.writeValue(data);
       });
-      device.addEventListener('gattserverdisconnected', function(){
-        setStatus('已斷線','err');
-        log('裝置已斷線');
-        stopGame();
-        txChar = rxChar = null;
-        $('connectBtn').style.display='block';
-        $('disconnectBtn').style.display='none';
-        $('startBtn').disabled = true;
-        $('sendRaw').disabled = true;
-      });
-
-      log('連線中：'+device.name);
-      var server = await device.gatt.connect();
-      var services = await server.getPrimaryServices();
-
-      for (var i=0;i<services.length;i++){
-        var chars = await services[i].getCharacteristics();
-        var tx=null, rx=null;
-        for (var j=0;j<chars.length;j++){
-          var p = chars[j].properties;
-          if (!tx && (p.write || p.writeWithoutResponse)) tx = chars[j];
-          if (!rx && (p.notify || p.indicate)) rx = chars[j];
-        }
-        if (tx && rx){ txChar=tx; rxChar=rx; break; }
-      }
-      if (!txChar){
-        throw new Error('找不到可用的讀寫通道，請確認玩具沒有同時連在 Lovense App 上');
-      }
-
-      await rxChar.startNotifications();
-      rxChar.addEventListener('characteristicvaluechanged', onRx);
-
-      setStatus('已連線：'+device.name, 'ok');
-      log('連線完成');
-      $('connectBtn').style.display='none';
-      $('disconnectBtn').style.display='block';
-      $('startBtn').disabled = false;
-      $('sendRaw').disabled = false;
-
-      // 問一下型號與電量，順便自動選指令格式
-      try{
-        var type = await request('DeviceType;');
-        var letter = (type.split(':')[0]||'').toUpperCase();
-        if (letter === 'P'){ $('profile').value='dual'; log('辨識為 Edge 系列，改用雙馬達格式'); }
-        else if (letter === 'H'){ $('profile').value='stroker'; log('辨識為 Solace 系列，改用抽插格式'); }
-        else if (letter){ log('型號代碼：'+letter+'（未收錄，先用目前選的格式）'); }
-        onProfileChange();
-      }catch(e){ log('讀取型號逾時，先用目前選的格式'); }
-      try{ log('電量：'+ await request('Battery;') +'%'); }catch(e){}
-
-    }catch(err){
-      setStatus('連線失敗：'+err.message, 'err');
-      log('連線失敗：'+err.message);
     }
+    return txChar.writeValue(data);
   }
 
-  async function disconnect(){
-    stopGame();
-    await send(stopCommands()[0]);
-    if (device && device.gatt.connected) device.gatt.disconnect();
-  }
+  // cmd: string. opts.force skips dedupe/throttle.
+  function send(cmd, opts){
+    opts = opts || {};
+    if (!connected || !txChar) return Promise.resolve(false);
+    if (cmd.charAt(cmd.length-1) !== ';') cmd += ';';
 
-  async function send(cmd){
-    if (!txChar) return;
-    var payload = cmd.endsWith(';') ? cmd : cmd+';';
-    var buf = new Uint8Array(payload.length);
-    for (var i=0;i<payload.length;i++) buf[i] = payload.charCodeAt(i);
-    try{
-      if (txChar.properties.writeWithoutResponse && txChar.writeValueWithoutResponse){
-        await txChar.writeValueWithoutResponse(buf);
-      } else {
-        await txChar.writeValue(buf);
-      }
-    }catch(e){ log('寫入失敗：'+e.message); }
-  }
+    var now = Date.now();
+    if (!opts.force){
+      if (cmd === lastSentCmd && (now - lastSentAt) < 900) return Promise.resolve(true); // dedupe
+      if ((now - lastSentAt) < MIN_WRITE_GAP_MS && cmd === lastSentCmd) return Promise.resolve(true);
+    }
 
-  function request(cmd){
-    return new Promise(function(resolve, reject){
-      var done = false;
-      pending.push(function(msg){ done=true; resolve(msg); });
-      send(cmd);
-      setTimeout(function(){ if(!done) reject(new Error('逾時')); }, 3000);
+    return enqueue(function(){
+      if (!connected || !txChar) return false;
+      lastSentCmd = cmd; lastSentAt = Date.now();
+      if (!opts.quiet) log('TX  ' + cmd, 'tx');
+      return rawWrite(cmd).then(function(){ return true; }).catch(function(err){
+        log('TX FAILED ' + cmd + '  → ' + (err && err.message ? err.message : err), 'er');
+        return false;
+      });
     });
   }
 
-  // ---------- 指令格式 ----------
-  function secondRatio(){ return parseInt($('second').value,10)/100; }
+  function onNotify(ev){
+    var v = ev.target.value;
+    var txt = '';
+    try { txt = new TextDecoder().decode(v); } catch(e){ txt = '<binary>'; }
+    var clean = txt.replace(/\s+$/,'');
+    log('RX  ' + clean, 'rx');
 
-  function buildCommands(primaryLevel, secondaryLevel){
-    switch($('profile').value){
-      case 'dual':   return ['Vibrate1:'+primaryLevel+';','Vibrate2:'+secondaryLevel+';'];
-      case 'mply2':  return ['Mply:'+primaryLevel+':'+secondaryLevel+';'];
-      case 'stroker':return ['Mply:'+primaryLevel+':'+secondaryLevel+';'];
-      default:       return ['Vibrate:'+primaryLevel+';'];
+    // DeviceType reply looks like  "<letter>:<firmware>:<mac>;"
+    if (/^[A-Za-z]{1,3}:/.test(clean)){
+      iType.textContent = clean.replace(/;+$/,'');
+      suggestModel(clean);
+    } else if (/^\d{1,3};?$/.test(clean)){
+      iBatt.textContent = clean.replace(/;+$/,'') + '%';
     }
   }
-  function stopCommands(){ return buildCommands(0,0); }
-  function hasSecondAxis(){
-    var v = $('profile').value;
-    return v==='dual' || v==='mply2' || v==='stroker';
-  }
-  function onProfileChange(){
-    $('secondWrap').style.display = hasSecondAxis() ? 'block' : 'none';
-    $('secondLabel').textContent =
-      ($('profile').value==='stroker' ? '抽插深度' : '第二顆馬達') + '：' + $('second').value + '%';
+
+  function suggestModel(reply){
+    // Purely a hint; the dropdown stays authoritative. Reported so we can map
+    // the letter → model table from real hardware instead of guessing.
+    log('note: DeviceType letter is "' + reply.split(':')[0] + '". If the wrong command is being sent, pick the model manually above.');
   }
 
-  var lastP=-1, lastS=-1, lastWrite=0;
-  async function applyStrength(pct){
-    var p = Math.max(0, Math.min(20, Math.round(pct/100*20)));
-    var s = hasSecondAxis() ? Math.max(0, Math.min(20, Math.round(pct*secondRatio()/100*20))) : p;
-    var now = Date.now();
-    if (p===lastP && s===lastS && now-lastWrite < 1500) return;
-    lastP=p; lastS=s; lastWrite=now;
-    var cmds = buildCommands(p,s);
-    for (var i=0;i<cmds.length;i++) await send(cmds[i]);
+  /* ============================================================
+     Connect / discover
+     ============================================================ */
+  function collectOptionalServices(){
+    var list = lovenseServiceList();
+    var extra = extraUuidEl.value.trim().toLowerCase();
+    if (extra) list.unshift(extra);
+    return list;
   }
 
-  // ---------- 遊戲邏輯 ----------
-  function clamp(v,a,b){ return Math.min(b, Math.max(a,v)); }
-  function pseudoRandom(seed){ var x=Math.sin(seed*12.9898)*43758.5453; return x-Math.floor(x); }
+  function connect(){
+    if (connecting) return;
+    if (!navigator.bluetooth){
+      setStatus('Web Bluetooth is not available in this browser.\nUse Chrome on Android, or Chrome/Edge on desktop. On iOS you need the Bluefy browser.', 'err');
+      return;
+    }
+    connecting = true;
+    connectBtn.disabled = true;
+    setStatus('Opening device picker…', 'busy');
 
-  var PATTERNS = [
-    {name:'穩定', calc:function(t,b){ return b; }},
-    {name:'脈衝', calc:function(t,b){ return (t%1.0)<0.6 ? b : b*0.3; }},
-    {name:'波浪', calc:function(t,b){ return clamp(b*0.7 + b*0.3*Math.sin(2*Math.PI*t/2.0),0,100); }},
-    {name:'尖峰', calc:function(t,b){ return (t%1.5)<0.2 ? 100 : b*0.5; }},
-    {name:'隨機', calc:function(t,b){ return clamp(b+(pseudoRandom(Math.floor(t/0.4))-0.5)*30,0,100); }}
-  ];
-
-  var LEVEL_MS=5000, TICK_MS=200, BURST_MS=2000, BURST_CD=20000, BURST_PCT=10;
-  var level=1, running=false, bursting=false;
-  var startAt=null, levelAt=null, cdUntil=0;
-  var levelTimer=null, tickTimer=null, burstTimer=null, cdTimer=null;
-
-  function baseStrength(){ return Math.min(100, 10 + (level-1)*10); }
-  function pattern(){ return PATTERNS[(level-1)%PATTERNS.length]; }
-
-  function render(pct){
-    $('lv').textContent = running ? level : '—';
-    $('st').textContent = running ? baseStrength()+'%' : '—';
-    $('pt').textContent = running ? pattern().name : '—';
-    $('bar').style.width = (running ? pct : 0)+'%';
-    if (startAt){
-      var sec = Math.floor((Date.now()-startAt)/1000);
-      $('tm').textContent = String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+    var opts;
+    var optionalServices = collectOptionalServices();
+    if (showAllEl.checked){
+      opts = { acceptAllDevices:true, optionalServices:optionalServices };
     } else {
-      $('tm').textContent = '00:00';
+      opts = {
+        filters: NAME_PREFIXES.map(function(p){ return { namePrefix:p }; }),
+        optionalServices: optionalServices
+      };
     }
+
+    navigator.bluetooth.requestDevice(opts)
+      .then(function(d){
+        device = d;
+        iName.textContent = d.name || '(no name)';
+        log('Picked device: ' + (d.name || '(no name)') + '  id=' + d.id);
+        d.addEventListener('gattserverdisconnected', onDisconnected);
+        setStatus('Connecting to GATT server…', 'busy');
+        return d.gatt.connect();
+      })
+      .then(function(s){
+        server = s;
+        setStatus('Discovering services…', 'busy');
+        return s.getPrimaryServices();
+      })
+      .then(function(services){
+        log('Found ' + services.length + ' accessible service(s).');
+        services.forEach(function(sv){ log('  · ' + sv.uuid); });
+        return pickServiceAndChars(services);
+      })
+      .then(function(ok){
+        if (!ok) throw new Error('NO_USABLE_SERVICE');
+        return rxChar.startNotifications().then(function(){
+          rxChar.addEventListener('characteristicvaluechanged', onNotify);
+          log('Subscribed to notifications on ' + rxChar.uuid);
+        }).catch(function(err){
+          log('Could not subscribe to notifications: ' + err.message + ' (control may still work)', 'er');
+        });
+      })
+      .then(function(){
+        connected = true; connecting = false;
+        setStatus('Connected to ' + (device.name || 'device') + '.', 'ok');
+        setControlsEnabled(true);
+        requestWakeLock();
+        // Give the stack a beat before the first command — some models drop
+        // anything written immediately after the notification subscription.
+        return delay(350).then(function(){ return send('DeviceType;', {force:true}); })
+                         .then(function(){ return delay(250); })
+                         .then(function(){ return send('Battery;', {force:true}); });
+      })
+      .catch(function(err){
+        connecting = false;
+        connectBtn.disabled = false;
+        handleConnectError(err);
+      });
+  }
+
+  function pickServiceAndChars(services){
+    // Prefer a Lovense-shaped service; otherwise take any service that has
+    // both a writable and a notifying characteristic.
+    var ordered = services.slice().sort(function(a,b){
+      var la = /300001-0023-4bd4-bbd5-a6920e4c5653$/.test(a.uuid) ? 0 : (a.uuid.indexOf('fff0') === 4 ? 1 : 2);
+      var lb = /300001-0023-4bd4-bbd5-a6920e4c5653$/.test(b.uuid) ? 0 : (b.uuid.indexOf('fff0') === 4 ? 1 : 2);
+      return la - lb;
+    });
+
+    var i = 0;
+    function tryNext(){
+      if (i >= ordered.length) return Promise.resolve(false);
+      var sv = ordered[i++];
+      return sv.getCharacteristics().then(function(chars){
+        var w = null, n = null;
+        chars.forEach(function(c){
+          var p = c.properties;
+          if (!w && (p.writeWithoutResponse || p.write)) w = c;
+          if (!n && (p.notify || p.indicate)) n = c;
+        });
+        if (w && n){
+          service = sv; txChar = w; rxChar = n;
+          iService.textContent = sv.uuid;
+          iTx.textContent = w.uuid + (w.properties.writeWithoutResponse ? ' (no-rsp)' : ' (rsp)');
+          iRx.textContent = n.uuid;
+          log('Using service ' + sv.uuid);
+          log('  TX ' + w.uuid + '   RX ' + n.uuid);
+          return true;
+        }
+        return tryNext();
+      }).catch(function(){ return tryNext(); });
+    }
+    return tryNext();
+  }
+
+  function handleConnectError(err){
+    var name = err && err.name ? err.name : '';
+    var msg  = err && err.message ? err.message : String(err);
+    log('Connect error: ' + name + ' ' + msg, 'er');
+
+    if (name === 'NotFoundError' && /User cancelled|chooser/i.test(msg)){
+      setStatus('Picker cancelled. Nothing selected.', '');
+      return;
+    }
+    if (name === 'NotFoundError'){
+      setStatus('No matching device found.\n• Force-quit the Lovense app, then short-press the toy so its LED blinks.\n• Tick "Show all BLE devices" and look for an LVS-… entry.\n• Make sure the toy is not paired in Android Bluetooth settings.', 'err');
+      return;
+    }
+    if (msg === 'NO_USABLE_SERVICE'){
+      setStatus('Connected, but no service with both write + notify was visible.\nWeb Bluetooth can only see services declared in advance. Read the toy\'s service UUID with nRF Connect and paste it into "Extra service UUID", then reconnect.', 'err');
+      cleanup();
+      return;
+    }
+    if (name === 'NetworkError'){
+      setStatus('GATT connection failed / dropped.\n• Toy may already be held by the Lovense app — force-quit it.\n• Toggle the toy off and on, then retry.\n• Move closer; low battery shortens range badly.', 'err');
+      cleanup();
+      return;
+    }
+    if (name === 'SecurityError'){
+      setStatus('Blocked by the browser. The page must be served over https:// (GitHub Pages works). file:// will not.', 'err');
+      return;
+    }
+    setStatus('Connection failed: ' + name + ' ' + msg, 'err');
+    cleanup();
+  }
+
+  function delay(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  function onDisconnected(){
+    log('GATT server disconnected.', 'er');
+    var wasRunning = gameRunning;
+    connected = false;
+    setControlsEnabled(false);
+    if (wasRunning) stopGame(true);
+    setStatus('Disconnected.', 'err');
+    releaseWakeLock();
+    if (autoReconnectEl.checked && device){
+      setStatus('Disconnected — trying to reconnect…', 'busy');
+      reconnect(1);
+    }
+  }
+
+  function reconnect(attempt){
+    if (!device || connected) return;
+    if (attempt > 5){
+      setStatus('Reconnect gave up after 5 tries. Press "Scan & Connect".', 'err');
+      return;
+    }
+    log('Reconnect attempt ' + attempt + '…');
+    device.gatt.connect()
+      .then(function(s){ server = s; return s.getPrimaryServices(); })
+      .then(function(svcs){ return pickServiceAndChars(svcs); })
+      .then(function(ok){
+        if (!ok) throw new Error('NO_USABLE_SERVICE');
+        return rxChar.startNotifications().then(function(){
+          rxChar.addEventListener('characteristicvaluechanged', onNotify);
+        }).catch(function(){});
+      })
+      .then(function(){
+        connected = true;
+        setStatus('Reconnected to ' + (device.name || 'device') + '.', 'ok');
+        setControlsEnabled(true);
+        requestWakeLock();
+      })
+      .catch(function(){
+        setTimeout(function(){ reconnect(attempt + 1); }, 1200 * attempt);
+      });
+  }
+
+  function cleanup(){
+    try { if (device && device.gatt && device.gatt.connected) device.gatt.disconnect(); } catch(e){}
+    server = null; service = null; txChar = null; rxChar = null;
+    connected = false;
+    setControlsEnabled(false);
+  }
+
+  function manualDisconnect(){
+    autoReconnectEl.checked = false;
+    stopGame(true);
+    send('Vibrate:0;', {force:true, quiet:true});
+    setTimeout(function(){
+      cleanup();
+      setStatus('Disconnected.', '');
+      log('Manually disconnected.');
+      releaseWakeLock();
+    }, 200);
+  }
+
+  /* ============================================================
+     Wake lock — Android throttles timers and can drop BLE when
+     the screen sleeps.
+     ============================================================ */
+  function requestWakeLock(){
+    if (!('wakeLock' in navigator)) return;
+    navigator.wakeLock.request('screen').then(function(w){
+      wakeLock = w;
+      log('Screen wake lock acquired.');
+      w.addEventListener('release', function(){ wakeLock = null; });
+    }).catch(function(){});
+  }
+  function releaseWakeLock(){
+    if (wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState === 'visible' && connected && !wakeLock) requestWakeLock();
+  });
+
+  /* ============================================================
+     Command layer — model → command strings
+     ============================================================ */
+  function pctToLevel(pct){ return clamp(Math.round(pct / 100 * 20), 0, 20); }
+
+  function commandsFor(pct){
+    var lv = pctToLevel(pct);
+    switch (modelEl.value){
+      case 'dual':   return ['Vibrate1:' + lv + ';', 'Vibrate2:' + lv + ';'];
+      case 'thrust': return ['Thrusting:' + lv + ';'];
+      case 'custom':
+        var p = customPrefixEl.value.trim() || 'Vibrate:';
+        return [p + lv + ';'];
+      default:       return ['Vibrate:' + lv + ';'];
+    }
+  }
+
+  var lastLevelSent = -1;
+  function setPower(pct, opts){
+    opts = opts || {};
+    var lv = pctToLevel(pct);
+    if (!opts.force && lv === lastLevelSent) return Promise.resolve();
+    lastLevelSent = lv;
+    var cmds = commandsFor(pct);
+    var chain = Promise.resolve();
+    cmds.forEach(function(c){
+      chain = chain.then(function(){ return send(c, { quiet: !!opts.quiet, force:true }); });
+    });
+    return chain;
+  }
+
+  function stopToy(){
+    lastLevelSent = -1;
+    return setPower(0, { force:true });
+  }
+
+  /* ============================================================
+     UI enable / disable
+     ============================================================ */
+  function setControlsEnabled(on){
+    disconnectBtn.disabled = !on;
+    connectBtn.disabled = on;
+    manualEl.disabled = !on;
+    mStop.disabled = !on;
+    qType.disabled = !on; qBatt.disabled = !on; qPower.disabled = !on;
+    rawSend.disabled = !on;
+    startBtn.disabled = !on || gameRunning;
+    if (!on){ stopBtn.disabled = true; burstBtn.disabled = true; }
+  }
+
+  /* ============================================================
+     Game logic (ported from lovense_game.html)
+     ============================================================ */
+  function currentBaseStrength(){
+    return Math.min(MAX_STRENGTH, START_STRENGTH + (level - 1) * STRENGTH_STEP);
+  }
+  function currentPattern(){ return PATTERNS[(level - 1) % PATTERNS.length]; }
+
+  function updateDisplays(){
+    levelDisplay.textContent = level;
+    var s = currentBaseStrength();
+    strengthDisplay.textContent = s + '%';
+    strengthBar.style.width = s + '%';
+    patternDisplay.textContent = currentPattern().name;
+  }
+  function updateElapsed(){
+    if (!gameStartTime) return;
+    var sec = Math.floor((Date.now() - gameStartTime) / 1000);
+    timeDisplay.textContent =
+      String(Math.floor(sec / 60)).padStart(2,'0') + ':' + String(sec % 60).padStart(2,'0');
+  }
+
+  function patternTick(){
+    if (!gameRunning || bursting || !connected) return;
+    var t = (Date.now() - patternStartTime) / 1000;
+    var pct = currentPattern().calc(t, currentBaseStrength());
+    setPower(pct, { quiet:true });
+  }
+
+  function levelUp(){
+    level += 1;
+    patternStartTime = Date.now();
+    updateDisplays();
+    log('Level ' + level + ' — ' + currentBaseStrength() + '%, pattern ' + currentPattern().name);
   }
 
   function beginEscalation(){
     level = 1;
-    startAt = Date.now();
-    levelAt = Date.now();
+    gameStartTime = Date.now();
+    patternStartTime = Date.now();
     if (levelTimer) clearInterval(levelTimer);
-    levelTimer = setInterval(function(){
-      if (!running || bursting) return;
-      level += 1;
-      levelAt = Date.now();
-      log('升到第 '+level+' 階：'+baseStrength()+'%，'+pattern().name);
-    }, LEVEL_MS);
+    levelTimer = setInterval(levelUp, LEVEL_INTERVAL_MS);
+    updateDisplays();
+    updateElapsed();
   }
 
-  function tick(){
-    if (!running) return;
-    if (bursting){ render(BURST_PCT); return; }
-    var t = (Date.now()-levelAt)/1000;
-    var pct = clamp(pattern().calc(t, baseStrength()), 0, 100);
-    render(pct);
-    applyStrength(pct);
+  function resetBurstCooldown(){
+    if (burstCooldownInterval){ clearInterval(burstCooldownInterval); burstCooldownInterval = null; }
+    burstCooldownUntil = 0;
+    burstBtn.textContent = BURST_LABEL;
+  }
+  function startBurstCooldownDisplay(){
+    if (burstCooldownInterval) clearInterval(burstCooldownInterval);
+    burstBtn.textContent = '⚡ Cooling down ' + Math.max(Math.ceil((burstCooldownUntil - Date.now())/1000),0) + ' s';
+    burstCooldownInterval = setInterval(function(){
+      var remain = Math.ceil((burstCooldownUntil - Date.now()) / 1000);
+      if (remain <= 0){
+        clearInterval(burstCooldownInterval); burstCooldownInterval = null;
+        burstBtn.textContent = BURST_LABEL;
+        burstBtn.disabled = !gameRunning || bursting;
+      } else {
+        burstBtn.textContent = '⚡ Cooling down ' + remain + ' s';
+      }
+    }, 250);
   }
 
   function startGame(){
-    if (!txChar || running) return;
-    running = true; bursting = false; cdUntil = 0;
+    if (!connected){ log('Not connected — cannot start.', 'er'); return; }
+    gameRunning = true; bursting = false;
+    resetBurstCooldown();
     beginEscalation();
-    tickTimer = setInterval(tick, TICK_MS);
-    $('startBtn').disabled = true;
-    $('stopBtn').disabled = false;
-    $('burstBtn').disabled = false;
-    log('遊戲開始：第 1 階，'+baseStrength()+'%，'+pattern().name);
-    tick();
+    startBtn.disabled = true; stopBtn.disabled = false; burstBtn.disabled = false;
+    manualEl.disabled = true; modelEl.disabled = true;
+    log('Game started — level 1, ' + currentBaseStrength() + '%, pattern ' + currentPattern().name);
+    tickTimer = setInterval(patternTick, PATTERN_TICK_MS);
+    elapsedTimer = setInterval(updateElapsed, 250);
+    patternTick();
   }
 
-  function stopGame(){
-    if (!running) return;
-    running = false; bursting = false;
-    [levelTimer,tickTimer,burstTimer,cdTimer].forEach(function(x){ if(x) clearInterval(x); });
-    levelTimer=tickTimer=burstTimer=cdTimer=null;
-    startAt=null; level=1; lastP=-1; lastS=-1;
-    $('startBtn').disabled = !txChar;
-    $('stopBtn').disabled = true;
-    $('burstBtn').disabled = true;
-    $('burstBtn').textContent = '爆發：2 秒 10% 強度';
-    render(0);
-    var cmds = stopCommands();
-    for (var i=0;i<cmds.length;i++) send(cmds[i]);
-    log('遊戲結束，已送出停止指令');
+  function stopGame(silent){
+    if (!gameRunning && silent) return;
+    gameRunning = false; bursting = false;
+    if (levelTimer){ clearInterval(levelTimer); levelTimer = null; }
+    if (tickTimer){ clearInterval(tickTimer); tickTimer = null; }
+    if (elapsedTimer){ clearInterval(elapsedTimer); elapsedTimer = null; }
+    if (burstTimeout){ clearTimeout(burstTimeout); burstTimeout = null; }
+    resetBurstCooldown();
+    startBtn.disabled = !connected;
+    stopBtn.disabled = true; burstBtn.disabled = true;
+    manualEl.disabled = !connected; modelEl.disabled = false;
+    manualEl.value = 0; manualVal.textContent = '0%'; manualLv.textContent = '0';
+    stopToy();
+    if (!silent) log('Game ended — toy stopped.');
   }
 
   function burst(){
-    if (!running || bursting || Date.now() < cdUntil) return;
+    var now = Date.now();
+    if (!gameRunning || bursting || now < burstCooldownUntil) return;
     bursting = true;
-    cdUntil = Date.now() + BURST_CD;
-    $('burstBtn').disabled = true;
-    log('爆發：2 秒 '+BURST_PCT+'%，結束後回到第 1 階');
-    applyStrength(BURST_PCT);
-    burstTimer = setTimeout(function(){
+    burstBtn.disabled = true;
+    burstCooldownUntil = now + BURST_CD_MS;
+    log('Burst — 2 s at ' + BURST_STRENGTH + '%, then reset to level 1.');
+    setPower(BURST_STRENGTH, { force:true });
+    burstTimeout = setTimeout(function(){
       bursting = false;
       beginEscalation();
-      log('爆發結束，回到第 1 階（'+baseStrength()+'%，'+pattern().name+'）');
-      tick();
-      cdTimer = setInterval(function(){
-        var remain = Math.ceil((cdUntil-Date.now())/1000);
-        if (remain <= 0){
-          clearInterval(cdTimer); cdTimer=null;
-          $('burstBtn').textContent = '爆發：2 秒 10% 強度';
-          $('burstBtn').disabled = !running;
-        } else {
-          $('burstBtn').textContent = '冷卻中 '+remain+' 秒';
-        }
-      }, 250);
-    }, BURST_MS);
+      log('Burst over — reset to level 1 (' + currentBaseStrength() + '%, ' + currentPattern().name + ').');
+      patternTick();
+      startBurstCooldownDisplay();
+    }, BURST_DURATION_SEC * 1000);
   }
 
-  // ---------- 事件 ----------
-  $('connectBtn').addEventListener('click', connect);
-  $('disconnectBtn').addEventListener('click', disconnect);
-  $('startBtn').addEventListener('click', startGame);
-  $('stopBtn').addEventListener('click', stopGame);
-  $('burstBtn').addEventListener('click', burst);
-  $('profile').addEventListener('change', function(){ lastP=-1; onProfileChange(); });
-  $('second').addEventListener('input', function(){ lastP=-1; onProfileChange(); });
-  $('sendRaw').addEventListener('click', async function(){
-    var cmd = $('raw').value.trim();
-    if (!cmd) return;
-    log('→ '+cmd);
-    try{ await request(cmd); }catch(e){ log('沒有收到回覆'); }
+  /* ============================================================
+     Events
+     ============================================================ */
+  connectBtn.addEventListener('click', connect);
+  disconnectBtn.addEventListener('click', manualDisconnect);
+  startBtn.addEventListener('click', startGame);
+  stopBtn.addEventListener('click', function(){ stopGame(false); });
+  burstBtn.addEventListener('click', burst);
+
+  modelEl.addEventListener('change', function(){
+    customWrap.hidden = modelEl.value !== 'custom';
   });
 
-  document.addEventListener('visibilitychange', function(){
-    if (document.hidden && running) stopGame();
+  manualEl.addEventListener('input', function(){
+    var v = parseInt(manualEl.value, 10);
+    manualVal.textContent = v + '%';
+    manualLv.textContent = pctToLevel(v);
+    setPower(v);
   });
+  mStop.addEventListener('click', function(){
+    manualEl.value = 0; manualVal.textContent='0%'; manualLv.textContent='0';
+    stopToy();
+  });
+
+  qType.addEventListener('click', function(){ send('DeviceType;', {force:true}); });
+  qBatt.addEventListener('click', function(){ send('Battery;',  {force:true}); });
+  qPower.addEventListener('click', function(){ send('PowerOff;',{force:true}); });
+
+  rawSend.addEventListener('click', function(){
+    var c = rawCmd.value.trim();
+    if (!c) return;
+    send(c, {force:true});
+  });
+  rawCmd.addEventListener('keydown', function(e){ if (e.key === 'Enter') rawSend.click(); });
+
+  $('clearLog').addEventListener('click', function(){ logEl.textContent = ''; });
+  $('copyLog').addEventListener('click', function(){
+    navigator.clipboard.writeText(logEl.textContent).then(function(){
+      log('Log copied to clipboard.');
+    }).catch(function(){ log('Clipboard blocked — select the text manually.', 'er'); });
+  });
+
   window.addEventListener('beforeunload', function(){
-    if (txChar) { var c = stopCommands(); for (var i=0;i<c.length;i++) send(c[i]); }
+    if (connected){ try{ rawWrite('Vibrate:0;'); }catch(e){} }
   });
 
-  onProfileChange();
-  render(0);
-  log('頁面已載入。按「選擇並連線玩具」開始。');
+  /* ============================================================
+     Boot
+     ============================================================ */
+  if (!navigator.bluetooth){
+    setStatus('Web Bluetooth is NOT available here.\nUse Chrome on Android, Chrome/Edge on desktop, or Bluefy on iOS. The page must be on https://', 'err');
+    connectBtn.disabled = true;
+  } else if (navigator.bluetooth.getAvailability){
+    navigator.bluetooth.getAvailability().then(function(av){
+      if (!av){
+        setStatus('Web Bluetooth API is present but no Bluetooth adapter is available.\nTurn Bluetooth on and reload.', 'err');
+      }
+    });
+  }
+  log('Page loaded. Force-quit the Lovense app, wake the toy (LED blinking), then press "Scan & Connect".');
 })();
 </script>
 </body>
