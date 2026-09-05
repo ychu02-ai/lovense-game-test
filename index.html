@@ -148,6 +148,7 @@
       <button id="connectBtn" class="primary">Scan &amp; Connect</button>
       <button id="disconnectBtn" class="bad" disabled>Disconnect</button>
     </div>
+    <button id="retryBtn" class="full mt" disabled>Reconnect (same device — no picker)</button>
 
     <div class="check">
       <input type="checkbox" id="autoReconnect" checked>
@@ -368,7 +369,7 @@
      ============================================================ */
   var scanStatus=$('scanStatus'), scanBtn=$('scanBtn'), scanStopBtn=$('scanStopBtn'),
       scanLovenseOnly=$('scanLovenseOnly'), scanList=$('scanList');
-  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn');
+  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn'), retryBtn=$('retryBtn');
   var filterModeEl=$('filterMode'), exactWrap=$('exactWrap'), exactNameEl=$('exactName');
   var autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid');
   var iName=$('iName'), iService=$('iService'), iTx=$('iTx'), iRx=$('iRx'), iType=$('iType'), iBatt=$('iBatt');
@@ -592,6 +593,59 @@
     return { filters: NAME_PREFIXES.map(function(p){ return { namePrefix:p }; }), optionalServices:optionalServices };
   }
 
+  /* --- name → likely gen3 service UUID ---------------------------------
+     "LVS-ED01001" → model code "ED" → first letter 'E' = 0x45
+     → 45300001-002{3,4,5}-4bd4-bbd5-a6920e4c5653
+     Same rule that makes Edge (code P = 0x50) use 50300001-…            */
+  function deriveCandidates(name){
+    var out = [], groups = ['0023','0024','0025'], i, g, hx;
+    var m = /^(?:LVS|LOVE)[-_]?([A-Za-z]{1,3})/i.exec(name || '');
+    if (m){
+      var code = m[1].toUpperCase();
+      for (i = 0; i < code.length; i++){
+        hx = code.charCodeAt(i).toString(16);
+        for (g = 0; g < groups.length; g++) out.push(hx + '300001-' + groups[g] + '-4bd4-bbd5-a6920e4c5653');
+      }
+      log('Name "' + name + '" → model code "' + code + '" → first guess ' + out[0], 'hi');
+    }
+    out.push('0000fff0-0000-1000-8000-00805f9b34fb');
+    out.push('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
+    var extra = extraUuidEl.value.trim().toLowerCase();
+    if (extra) out.unshift(extra);
+    return out;
+  }
+
+  // Some stacks (Android after a cached-GATT hiccup, Bluefy on iOS) return an
+  // empty list from getPrimaryServices() but still resolve a service asked for
+  // by name. Probe explicitly as a fallback.
+  function probeServices(srv, rawList){
+    var seen = {}, list = [];
+    rawList.forEach(function(u){ if (!seen[u]){ seen[u] = 1; list.push(u); } });
+    var found = [], i = 0;
+    function step(){
+      if (i >= list.length) return Promise.resolve(found);
+      var u = list[i++];
+      if (i % 30 === 0) log('  probing ' + i + '/' + list.length + '…');
+      return srv.getPrimaryService(u)
+        .then(function(s){ log('  ✓ ' + u, 'hi'); found.push(s); return step(); })
+        .catch(function(){ return step(); });
+    }
+    return step();
+  }
+
+  // Android very often fails the FIRST gatt.connect() and succeeds on a retry.
+  function connectGatt(dev, tries){
+    return dev.gatt.connect().catch(function(err){
+      if (tries > 1){
+        log('gatt.connect() failed (' + err.name + ') — retry in 800 ms, ' + (tries-1) + ' left', 'er');
+        try { dev.gatt.disconnect(); } catch(e){}
+        return delay(800).then(function(){ return connectGatt(dev, tries - 1); });
+      }
+      throw err;
+    });
+  }
+
+  var failStep = '';
   function connect(){
     if (connecting) return;
     if (!navigator.bluetooth){
@@ -603,6 +657,7 @@
     catch (e){ setConn(e.message, 'err'); return; }
 
     connecting = true; connectBtn.disabled = true;
+    failStep = 'picker';
     setConn('Opening device picker…', 'busy');
 
     navigator.bluetooth.requestDevice(opts)
@@ -610,18 +665,42 @@
         device = d;
         iName.textContent = d.name || '(no name)';
         log('Picked: ' + (d.name || '(no name)') + '  id=' + d.id);
+        d.removeEventListener('gattserverdisconnected', onDisconnected);
         d.addEventListener('gattserverdisconnected', onDisconnected);
-        setConn('Connecting to GATT server…', 'busy');
-        return d.gatt.connect();
+        failStep = 'gatt.connect';
+        setConn('Connecting to GATT server (up to 3 attempts)…', 'busy');
+        return connectGatt(d, 3);
       })
-      .then(function(s){ server = s; setConn('Discovering services…', 'busy'); return s.getPrimaryServices(); })
+      .then(function(s){
+        server = s;
+        log('GATT connected. Settling for 600 ms before service discovery…');
+        setConn('Connected. Discovering services…', 'busy');
+        return delay(600);
+      })
+      .then(function(){
+        failStep = 'getPrimaryServices';
+        return server.getPrimaryServices().catch(function(err){
+          log('getPrimaryServices() threw ' + err.name + ': ' + err.message, 'er');
+          return [];
+        });
+      })
       .then(function(services){
-        log('Accessible services: ' + services.length);
+        log('getPrimaryServices() returned ' + services.length + ' service(s).');
         services.forEach(function(sv){ log('  · ' + sv.uuid); });
+        if (services.length) return services;
+        if (!server.connected){ throw new Error('DROPPED_DURING_DISCOVERY'); }
+        failStep = 'probeServices';
+        log('Empty list — probing candidate UUIDs individually…');
+        return probeServices(server, deriveCandidates(device.name).concat(lovenseServiceList()));
+      })
+      .then(function(services){
+        if (!services.length) throw new Error('NO_SERVICES_AT_ALL');
+        failStep = 'characteristics';
         return pickServiceAndChars(services);
       })
       .then(function(ok){
         if (!ok) throw new Error('NO_USABLE_SERVICE');
+        failStep = 'notifications';
         return rxChar.startNotifications().then(function(){
           rxChar.addEventListener('characteristicvaluechanged', onNotify);
           log('Subscribed to notifications on ' + rxChar.uuid);
@@ -640,6 +719,40 @@
           .then(function(){ return send('Battery;', {force:true}); });
       })
       .catch(function(err){ connecting = false; connectBtn.disabled = false; handleConnectError(err); });
+  }
+
+  // Reconnect without reopening the picker — permission for this device persists.
+  function retrySameDevice(){
+    if (!device){ setConn('No device chosen yet — press Scan & Connect first.', 'err'); return; }
+    if (connecting) return;
+    connecting = true; retryBtn.disabled = true; connectBtn.disabled = true;
+    failStep = 'gatt.connect';
+    setConn('Reconnecting to ' + (device.name || 'device') + '…', 'busy');
+    connectGatt(device, 4)
+      .then(function(s){ server = s; return delay(600); })
+      .then(function(){ return server.getPrimaryServices().catch(function(){ return []; }); })
+      .then(function(services){
+        log('Reconnect: ' + services.length + ' service(s).');
+        if (services.length) return services;
+        return probeServices(server, deriveCandidates(device.name).concat(lovenseServiceList()));
+      })
+      .then(function(services){
+        if (!services.length) throw new Error('NO_SERVICES_AT_ALL');
+        return pickServiceAndChars(services);
+      })
+      .then(function(ok){
+        if (!ok) throw new Error('NO_USABLE_SERVICE');
+        return rxChar.startNotifications().then(function(){
+          rxChar.addEventListener('characteristicvaluechanged', onNotify);
+        }).catch(function(){});
+      })
+      .then(function(){
+        connected = true; connecting = false;
+        setConn('Connected to ' + (device.name || 'device') + '.', 'ok');
+        setControlsEnabled(true); requestWakeLock();
+        return delay(350).then(function(){ return send('DeviceType;', {force:true}); });
+      })
+      .catch(function(err){ connecting = false; retryBtn.disabled = false; handleConnectError(err); });
   }
 
   function pickServiceAndChars(services){
@@ -677,21 +790,29 @@
   function handleConnectError(err){
     var name = err && err.name ? err.name : '';
     var msg  = err && err.message ? err.message : String(err);
-    log('Connect error: ' + name + ' ' + msg, 'er');
+    log('FAILED at step "' + failStep + '" → ' + name + ': ' + msg, 'er');
 
     if (name === 'NotFoundError' && /User cancelled|chooser/i.test(msg)){
       setConn('Picker cancelled.', ''); return;
     }
     if (name === 'NotFoundError'){
-      setConn('No matching device.\n• Force-quit the Lovense app, then press the toy so its LED blinks.\n• If the toy was renamed in the app, the LVS- name is gone — use the Manufacturer-data filter, or run the scanner in section 1 and pick the real name.\n• Make sure it is not paired in Android Bluetooth settings.', 'err');
+      setConn('No matching device.\n• Force-quit the Lovense app, then press the toy so its LED blinks.\n• If the toy was renamed in the app, the LVS- name is gone — use the Manufacturer-data filter.\n• Make sure it is not paired in Android Bluetooth settings.', 'err');
       return;
     }
+    if (msg === 'NO_SERVICES_AT_ALL'){
+      setConn('Link established, but the toy exposed ZERO services — even when probed one UUID at a time.\nThis is almost always a stale Android GATT cache. Fix, in order:\n 1. Turn Bluetooth OFF and ON again on the phone.\n 2. Android Settings → Apps → Chrome → Storage → Clear cache.\n 3. Power-cycle the toy (hold the button until it shuts off, then back on).\n 4. Press "Reconnect (same device)" — no picker needed.', 'err');
+      cleanup(); return;
+    }
+    if (msg === 'DROPPED_DURING_DISCOVERY'){
+      setConn('The toy accepted the connection and then dropped it immediately.\nThat is what happens when something else grabs it: force-quit every Lovense app on every nearby phone/PC, and remove the toy from Android Bluetooth settings if it is paired there. Then press "Reconnect (same device)".', 'err');
+      cleanup(); return;
+    }
     if (msg === 'NO_USABLE_SERVICE'){
-      setConn('Connected, but no service exposing both write + notify was visible.\nWeb Bluetooth only reveals services declared in advance. Run the scanner (section 1) or nRF Connect to read the toy\'s service UUID, paste it into "Extra service UUID", and reconnect.', 'err');
+      setConn('Services were found, but none had both a writable and a notifying characteristic.\nCheck the log for the UUIDs that were found and send them over — the toy may use a family this build does not cover yet.', 'err');
       cleanup(); return;
     }
     if (name === 'NetworkError'){
-      setConn('GATT connection failed or dropped.\n• The Lovense app may still hold the toy — force-quit it.\n• Power-cycle the toy and retry.\n• Move closer; a low battery shortens range badly.', 'err');
+      setConn('GATT link failed at step "' + failStep + '" after 3 attempts.\nIn order of likelihood:\n 1. Something else holds the toy — force-quit Lovense Remote/Connect everywhere, including other phones.\n 2. Stale Android GATT cache — toggle Bluetooth off/on, then press "Reconnect (same device)".\n 3. The toy is paired in Android Bluetooth settings — "Forget" it there.\n 4. Toy went back to sleep between the picker and the connect — press its button so the LED blinks, then Reconnect.\n 5. Weak link — hold the toy against the phone and retry.', 'err');
       cleanup(); return;
     }
     if (name === 'SecurityError'){
@@ -699,10 +820,10 @@
       return;
     }
     if (name === 'TypeError' && /manufacturerData/i.test(msg)){
-      setConn('This Chrome is too old for manufacturer-data filters. Switch the filter to "Name prefix" or "Show every BLE device".', 'err');
+      setConn('This browser is too old for manufacturer-data filters. Switch the filter to "Name prefix" or "Show every BLE device".', 'err');
       return;
     }
-    setConn('Connection failed: ' + name + ' ' + msg, 'err');
+    setConn('Failed at step "' + failStep + '": ' + name + ' ' + msg, 'err');
     cleanup();
   }
 
@@ -806,6 +927,7 @@
   function setControlsEnabled(on){
     disconnectBtn.disabled = !on;
     connectBtn.disabled = on;
+    retryBtn.disabled = on || !device;
     manualEl.disabled = !on; mStop.disabled = !on;
     qType.disabled=!on; qBatt.disabled=!on; qStatus.disabled=!on; qPower.disabled=!on;
     rawSend.disabled = !on;
@@ -911,6 +1033,7 @@
   filterModeEl.addEventListener('change', function(){ exactWrap.hidden = filterModeEl.value !== 'exact'; });
   connectBtn.addEventListener('click', connect);
   disconnectBtn.addEventListener('click', manualDisconnect);
+  retryBtn.addEventListener('click', retrySameDevice);
 
   modelEl.addEventListener('change', function(){
     customWrap.hidden = modelEl.value !== 'custom';
