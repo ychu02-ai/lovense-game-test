@@ -143,8 +143,9 @@
 
     <label>Device picker filter</label>
     <select id="filterMode">
-      <option value="mfg">Manufacturer data — Lovense company ID 620 (recommended)</option>
-      <option value="name">Name prefix — LVS- / LOVE- / model names</option>
+      <option value="both" selected>Name prefix + manufacturer data (recommended)</option>
+      <option value="name">Name prefix only — LVS- / LOVE- / model names (verified on Gush)</option>
+      <option value="mfg">Manufacturer data only — company ID 620 (unverified)</option>
       <option value="exact">Exact name (filled in from the scanner)</option>
       <option value="all">Show every BLE device nearby</option>
     </select>
@@ -160,12 +161,21 @@
     <button id="retryBtn" class="full mt" disabled>Reconnect (same device — no picker)</button>
     <button id="advBtn" class="full mt" disabled>Is the toy advertising right now? (12 s check)</button>
     <div class="row mt">
-      <div style="flex:0 0 auto;max-width:190px;">
+      <div style="flex:1 1 150px;">
         <label>Connection attempts</label>
         <select id="attempts">
           <option value="3">3 (fast fail)</option>
           <option value="6" selected>6</option>
-          <option value="12">12 (keep trying ~6 min)</option>
+          <option value="12">12 (keep trying)</option>
+        </select>
+      </div>
+      <div style="flex:1 1 150px;">
+        <label>Timeout per attempt</label>
+        <select id="connTimeout">
+          <option value="8000">8 s</option>
+          <option value="12000" selected>12 s</option>
+          <option value="20000">20 s</option>
+          <option value="0">none (browser default ~30 s)</option>
         </select>
       </div>
     </div>
@@ -439,7 +449,7 @@
      ============================================================ */
   var scanStatus=$('scanStatus'), scanBtn=$('scanBtn'), scanStopBtn=$('scanStopBtn'),
       scanLovenseOnly=$('scanLovenseOnly'), scanList=$('scanList');
-  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn'), retryBtn=$('retryBtn'), advBtn=$('advBtn'), attemptsEl=$('attempts');
+  var connStatusEl=$('connStatus'), connectBtn=$('connectBtn'), disconnectBtn=$('disconnectBtn'), retryBtn=$('retryBtn'), advBtn=$('advBtn'), attemptsEl=$('attempts'), connTimeoutEl=$('connTimeout');
   var filterModeEl=$('filterMode'), exactWrap=$('exactWrap'), exactNameEl=$('exactName');
   var autoReconnectEl=$('autoReconnect'), extraUuidEl=$('extraUuid'), wideUuidEl=$('wideUuid');
   var iName=$('iName'), iService=$('iService'), iTx=$('iTx'), iRx=$('iRx'), iType=$('iType'), iBatt=$('iBatt');
@@ -653,14 +663,25 @@
   function buildRequestOptions(){
     var optionalServices = collectOptionalServices();
     var mode = filterModeEl.value;
+    var nameFilters = NAME_PREFIXES.map(function(p){ return { namePrefix:p }; });
+    var mfgFilter    = { manufacturerData:[{ companyIdentifier: LOVENSE_COMPANY_ID }] };
     if (mode === 'all')  return { acceptAllDevices:true, optionalServices:optionalServices };
-    if (mode === 'mfg')  return { filters:[{ manufacturerData:[{ companyIdentifier: LOVENSE_COMPANY_ID }] }], optionalServices:optionalServices };
+    if (mode === 'mfg')  return { filters:[mfgFilter], optionalServices:optionalServices };
+    if (mode === 'both'){
+      // filters[] is OR'd. Manufacturer-data filters need Chrome 92+; if this
+      // build rejects the option, fall back to names alone.
+      try {
+        return { filters: nameFilters.concat([mfgFilter]), optionalServices:optionalServices };
+      } catch (e){
+        return { filters: nameFilters, optionalServices:optionalServices };
+      }
+    }
     if (mode === 'exact'){
       var n = exactNameEl.value.trim();
       if (!n) throw new Error('Fill in the exact advertised name first (or run the scanner).');
       return { filters:[{ name:n }], optionalServices:optionalServices };
     }
-    return { filters: NAME_PREFIXES.map(function(p){ return { namePrefix:p }; }), optionalServices:optionalServices };
+    return { filters: nameFilters, optionalServices:optionalServices };
   }
 
   /* --- name → likely gen3 service UUID ---------------------------------
@@ -702,15 +723,38 @@
 
   // Android very often fails the FIRST gatt.connect() and succeeds on a retry.
   // Timing matters for diagnosis: a fast failure = refused, ~30 s = timeout.
+  function connectWithTimeout(dev){
+    var ms = parseInt(connTimeoutEl.value, 10) || 0;
+    if (!ms) return dev.gatt.connect();
+    return new Promise(function(resolve, reject){
+      var done = false;
+      var timer = setTimeout(function(){
+        if (done) return;
+        done = true;
+        try { dev.gatt.disconnect(); } catch(e){}   // tear the half-open attempt down
+        var e = new Error('no answer within ' + ms + ' ms');
+        e.name = 'TimeoutError';
+        reject(e);
+      }, ms);
+      dev.gatt.connect().then(function(srv){
+        if (done){ try { dev.gatt.disconnect(); } catch(e){} return; }
+        done = true; clearTimeout(timer); resolve(srv);
+      }, function(err){
+        if (done) return;
+        done = true; clearTimeout(timer); reject(err);
+      });
+    });
+  }
+
   function connectGatt(dev, tries){
     var t0 = Date.now();
-    return dev.gatt.connect().then(function(s){
+    return connectWithTimeout(dev).then(function(s){
       log('gatt.connect() OK in ' + (Date.now()-t0) + ' ms');
       return s;
     }).catch(function(err){
       var ms = Date.now() - t0;
       log('gatt.connect() failed after ' + ms + ' ms — ' + err.name + ': ' + err.message, 'er');
-      if (ms > 20000){
+      if (err.name === 'TimeoutError' || ms > 20000){
         log('  ↑ ~30 s = TIMEOUT. The toy never answered the connection request: it either stopped advertising, or it is advertising but refusing new centrals (usually because it is bonded/held elsewhere).', 'er');
       } else if (ms < 3000){
         log('  ↑ instant failure = the request was refused outright, not timed out.', 'er');
@@ -924,6 +968,10 @@
       setConn('Services were found, but none had both a writable and a notifying characteristic.\nCheck the log for the UUIDs that were found and send them over — the toy may use a family this build does not cover yet.', 'err');
       cleanup(); return;
     }
+    if (name === 'TimeoutError' || (name === 'NetworkError' && /Connection attempt failed/i.test(msg))){
+      setConn('The toy never answered the connection request.\nOn Android this is nearly always one of:\n 1. ANOTHER APP STILL HOLDS IT — nRF Connect keeps the link open in the background. Press DISCONNECT in nRF, then swipe the app away. Same for Lovense Remote/Connect.\n 2. Stale Bluetooth stack — toggle Bluetooth off and on in quick settings.\n 3. The toy slept between picking and connecting — press its button so the LED blinks, then Scan & Connect again (re-pick; do not use Reconnect, the toy uses a random address that changes on power-cycle).\n 4. Try about://bluetooth-internals in Chrome and connect from there. If that fails too, the problem is Chrome/Android, not this page.', 'err');
+      cleanup(); return;
+    }
     if (name === 'NetworkError'){
       setConn('GATT link failed at step "' + failStep + '" after 3 attempts.\nIn order of likelihood:\n 1. Something else holds the toy — force-quit Lovense Remote/Connect everywhere, including other phones.\n 2. Stale Android GATT cache — toggle Bluetooth off/on, then press "Reconnect (same device)".\n 3. The toy is paired in Android Bluetooth settings — "Forget" it there.\n 4. Toy went back to sleep between the picker and the connect — press its button so the LED blinks, then Reconnect.\n 5. Weak link — hold the toy against the phone and retry.', 'err');
       cleanup(); return;
@@ -933,7 +981,9 @@
       return;
     }
     if (name === 'TypeError' && /manufacturerData/i.test(msg)){
-      setConn('This browser is too old for manufacturer-data filters. Switch the filter to "Name prefix" or "Show every BLE device".', 'err');
+      log('This build rejected the manufacturer-data filter — falling back to name prefixes.', 'er');
+      filterModeEl.value = 'name';
+      setConn('Manufacturer-data filters are not supported here. Switched to "Name prefix only" — press Scan & Connect again.', 'err');
       return;
     }
     setConn('Failed at step "' + failStep + '": ' + name + ' ' + msg, 'err');
